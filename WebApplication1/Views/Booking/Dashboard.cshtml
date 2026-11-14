@@ -1,0 +1,92 @@
+@{
+    ViewData["Title"] = "Owner & Admin Dashboard";
+}
+
+<div class="mb-5">
+    <div class="mb-4">
+        <h2 class="fw-bold mb-0">Analytics & Revenue Dashboard</h2>
+        <p class="text-muted">Real-time overview of your rental properties and payment collections</p>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-4 text-center">
+                <i class="bi bi-wallet2 display-5 text-success mb-2"></i>
+                <h6 class="text-muted">Total Revenue Collected</h6>
+                <h3 class="fw-bold mb-0" id="totalRevenueText">Loading...</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-4 text-center">
+                <i class="bi bi-calendar-check display-5 text-primary mb-2"></i>
+                <h6 class="text-muted">Active Months Tracked</h6>
+                <h3 class="fw-bold mb-0" id="totalMonthsText">Loading...</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-4 text-center">
+                <i class="bi bi-shield-check display-5 text-info mb-2"></i>
+                <h6 class="text-muted">System Status</h6>
+                <h3 class="fw-bold text-success mb-0">Operational</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm p-4">
+        <h5 class="fw-bold mb-3 border-bottom pb-2">Monthly Revenue Breakdown</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="revenueTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Billing Month</th>
+                        <th>Collected Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="revenueTableBody">
+                    <tr>
+                        <td colspan="2" class="text-center text-muted py-4">Fetching revenue data...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            fetch("/Booking/GetRevenueChartData")
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.getElementById("revenueTableBody");
+                    tbody.innerHTML = "";
+                    
+                    if (!data || data.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="2" class="text-center text-muted py-4">No payment records found yet.</td></tr>`;
+                        document.getElementById("totalRevenueText").textContent = "RM 0.00";
+                        document.getElementById("totalMonthsText").textContent = "0";
+                        return;
+                    }
+
+                    let sum = 0;
+                    data.forEach(item => {
+                        sum += item.totalRevenue;
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td><span class="badge bg-light text-dark border px-2 py-1">${item.month}</span></td>
+                            <td class="fw-bold text-success">RM ${Number(item.totalRevenue).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+
+                    document.getElementById("totalRevenueText").textContent = `RM ${sum.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+                    document.getElementById("totalMonthsText").textContent = data.length.toString();
+                })
+                .catch(err => {
+                    console.error("Failed to load revenue data:", err);
+                    document.getElementById("revenueTableBody").innerHTML = `<tr><td colspan="2" class="text-danger text-center py-4">Failed to load revenue data.</td></tr>`;
+                });
+        });
+    </script>
+}
+

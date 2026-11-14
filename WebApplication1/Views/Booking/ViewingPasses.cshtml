@@ -1,0 +1,125 @@
+@model List<HomeNest.Models.ViewingAppointment>
+
+@{
+    ViewData["Title"] = "Viewing Passes";
+    bool isTenant = User.IsInRole("Tenant");
+}
+
+<div class="mb-5">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
+        <div>
+            <h2 class="fw-bold mb-1" style="color: #0f172a;">
+                <i class="bi bi-qr-code text-teal me-2"></i>Physical Viewing Passes
+            </h2>
+            <p class="text-muted small mb-0">
+                Present your digital QR Viewing Pass to building security and the landlord upon arrival.
+            </p>
+        </div>
+        <a asp-controller="Property" asp-action="Catalog" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-search me-1"></i> Browse More Properties
+        </a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="card border-0 shadow-sm p-5 text-center rounded-4">
+            <i class="bi bi-qr-code-scan display-3 text-muted mb-3"></i>
+            <h4>No Viewing Passes Scheduled</h4>
+            <p class="text-muted">Browse rooms in the catalog and click "Schedule Viewing" to generate your first physical viewing pass.</p>
+            <div class="mt-2">
+                <a asp-controller="Property" asp-action="Catalog" class="btn btn-primary px-4" style="background:#0d9488; border-color:#0d9488;">
+                    Browse Properties
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-lg-2 g-4">
+            @foreach (var pass in Model)
+            {
+                var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={Uri.EscapeDataString(pass.QrCodeToken)}";
+                var statusClass = pass.Status switch
+                {
+                    "Confirmed" => "bg-success text-white",
+                    "Completed" => "bg-secondary text-white",
+                    "Cancelled" => "bg-danger text-white",
+                    _ => "bg-warning text-dark"
+                };
+
+                <div class="col">
+                    <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
+                        <div class="card-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge @statusClass px-2 py-1">@pass.Status</span>
+                                <span class="text-muted small ms-2 fw-semibold">Token: @pass.QrCodeToken</span>
+                            </div>
+                            <small class="text-muted"><i class="bi bi-clock me-1"></i>@pass.AppointmentDateTime.ToString("dd MMM yyyy, hh:mm tt")</small>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="row align-items-center">
+                                <!-- QR Code Box -->
+                                <div class="col-sm-5 text-center mb-3 mb-sm-0">
+                                    <div class="p-2 border rounded-3 bg-light d-inline-block shadow-sm">
+                                        <img src="@qrUrl" alt="QR Code" width="140" height="140" class="img-fluid" onerror="this.src='https://placehold.co/140x140?text=QR+Code';" />
+                                    </div>
+                                    <small class="d-block text-muted mt-2" style="font-size: 11px;">Scan at Condo Guardhouse</small>
+                                </div>
+                                <!-- Pass Details -->
+                                <div class="col-sm-7">
+                                    <h5 class="fw-bold mb-1 text-truncate" title="@pass.RoomUnit.Property.Title">
+                                        @pass.RoomUnit.Property.Title
+                                    </h5>
+                                    <p class="text-muted small mb-2">
+                                        <i class="bi bi-geo-alt-fill text-danger me-1"></i>@pass.RoomUnit.Property.Address, @pass.RoomUnit.Property.City
+                                    </p>
+                                    
+                                    <div class="p-2 bg-light rounded-3 small mb-3">
+                                        <div><strong>Room:</strong> @pass.RoomUnit.RoomName (@pass.RoomUnit.RoomType)</div>
+                                        <div><strong>Rent:</strong> <span class="text-success fw-bold">RM @pass.RoomUnit.MonthlyRent.ToString("N0")/mo</span></div>
+                                        @if (isTenant)
+                                        {
+                                            <div><strong>Host:</strong> @pass.RoomUnit.Property.Owner.FullName (@pass.RoomUnit.Property.Owner.PhoneNumber)</div>
+                                        }
+                                        else
+                                        {
+                                            <div><strong>Visitor:</strong> @pass.Tenant.FullName (@pass.Tenant.PhoneNumber)</div>
+                                        }
+                                        @if (!string.IsNullOrEmpty(pass.Remarks))
+                                        {
+                                            <div class="text-muted mt-1"><em>Remarks: @pass.Remarks</em></div>
+                                        }
+                                    </div>
+
+                                    @if (pass.Status == "Confirmed")
+                                    {
+                                        <form asp-action="UpdateViewingStatus" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@pass.Id" />
+                                            <input type="hidden" name="status" value="Cancelled" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Cancel this viewing pass?');">
+                                                Cancel Pass
+                                            </button>
+                                        </form>
+                                        @if (!isTenant)
+                                        {
+                                            <form asp-action="UpdateViewingStatus" method="post" class="d-inline ms-1">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@pass.Id" />
+                                                <input type="hidden" name="status" value="Completed" />
+                                                <button type="submit" class="btn btn-sm btn-success">
+                                                    Mark Completed
+                                                </button>
+                                            </form>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+

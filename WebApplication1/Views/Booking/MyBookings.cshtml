@@ -1,0 +1,80 @@
+@model List<HomeNest.Models.TenancyBooking>
+
+@{
+    ViewData["Title"] = "My Bookings";
+}
+
+<div class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0">My Bookings & Tenancies</h2>
+            <p class="text-muted">Track your room lease applications and payment status</p>
+        </div>
+        <a asp-controller="Property" asp-action="Catalog" class="btn btn-outline-primary">
+            <i class="bi bi-search me-1"></i> Browse More Rooms
+        </a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="card border-0 shadow-sm p-5 text-center">
+            <i class="bi bi-calendar-x display-3 text-muted mb-3"></i>
+            <h4>No Active or Pending Bookings</h4>
+            <p class="text-muted">You haven't submitted any room rental applications yet.</p>
+            <div class="mt-2">
+                <a asp-controller="Property" asp-action="Catalog" class="btn btn-primary">Browse Properties</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive bg-white rounded shadow-sm p-3">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Booking Ref</th>
+                        <th>Room & Property</th>
+                        <th>Tenure</th>
+                        <th>Monthly Rent</th>
+                        <th>Deposit Total</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var b in Model)
+                    {
+                        var statusBadge = b.Status switch
+                        {
+                            "Active" => "bg-success",
+                            "PendingApproval" => "bg-warning text-dark",
+                            "Rejected" => "bg-danger",
+                            "Completed" => "bg-secondary",
+                            _ => "bg-info text-dark"
+                        };
+
+                        <tr>
+                            <td>
+                                <strong>#BK-@b.Id.ToString("D4")</strong>
+                                <small class="text-muted d-block">@b.BookingDate.ToString("dd MMM yyyy")</small>
+                            </td>
+                            <td>
+                                <div class="fw-bold">@b.RoomUnit.RoomName</div>
+                                <small class="text-muted">@b.RoomUnit.Property.Title</small>
+                            </td>
+                            <td>
+                                <div>@b.StartDate.ToString("dd MMM yyyy") - @b.EndDate.ToString("dd MMM yyyy")</div>
+                                <small class="text-muted">(@b.DurationMonths months)</small>
+                            </td>
+                            <td class="fw-semibold text-success">RM @b.AgreedMonthlyRent.ToString("N0")/mo</td>
+                            <td>RM @b.TotalDepositPaid.ToString("N0")</td>
+                            <td>
+                                <span class="badge @statusBadge">@b.Status</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+

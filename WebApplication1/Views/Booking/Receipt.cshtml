@@ -1,0 +1,114 @@
+@model HomeNest.Models.RentalPayment
+
+@{
+    ViewData["Title"] = $"E-Receipt #{Model.TransactionRef}";
+    var booking = Model.TenancyBooking;
+    var room = booking.RoomUnit;
+    var property = room.Property;
+}
+
+<div class="container my-4" style="max-width: 800px;">
+    <!-- Print Actions -->
+    <div class="d-flex justify-content-between align-items-center mb-3 d-print-none">
+        <a asp-action="Leases" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Leases
+        </a>
+        <button type="button" class="btn btn-primary btn-sm px-3" onclick="window.print();" style="background:#0d9488; border-color:#0d9488;">
+            <i class="bi bi-printer-fill me-1"></i> Print / Save as PDF
+        </button>
+    </div>
+
+    <!-- Official Receipt Card -->
+    <div class="card border shadow-sm p-4 p-md-5 rounded-4 bg-white" id="receiptPaper">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-start border-bottom pb-4 mb-4">
+            <div class="d-flex align-items-center">
+                <div class="rounded-3 d-flex align-items-center justify-content-center text-white me-3" style="width: 48px; height: 48px; background: #0d9488;">
+                    <i class="bi bi-house-door-fill fs-4"></i>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-0" style="color: #0f172a;">HomeNest</h3>
+                    <small class="text-muted">MY House and Room Rental Management System</small>
+                </div>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-success-subtle text-success border border-success px-3 py-1 fs-6">PAID</span>
+                <div class="text-muted small mt-1">Receipt No: <strong>@Model.TransactionRef</strong></div>
+                <div class="text-muted small">Date: @Model.PaymentDate.ToString("dd MMM yyyy, hh:mm tt")</div>
+            </div>
+        </div>
+
+        <!-- Billed To & Landlord Details -->
+        <div class="row g-4 mb-4">
+            <div class="col-sm-6">
+                <h6 class="text-uppercase text-muted fw-bold small">Received From (Tenant)</h6>
+                <div class="fw-bold fs-6">@booking.Tenant.FullName</div>
+                <div class="small text-muted">Email: @booking.Tenant.Email</div>
+                <div class="small text-muted">Phone: @booking.Tenant.PhoneNumber</div>
+            </div>
+            <div class="col-sm-6 text-sm-end">
+                <h6 class="text-uppercase text-muted fw-bold small">Landlord / Payee</h6>
+                <div class="fw-bold fs-6">@property.Owner.FullName</div>
+                <div class="small text-muted">Property: @property.Title</div>
+                <div class="small text-muted">@property.Address, @property.City</div>
+            </div>
+        </div>
+
+        <!-- Line Item Table -->
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Item Description</th>
+                        <th>Period / Reference</th>
+                        <th class="text-end">Amount (MYR)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="fw-bold">@room.RoomName (@room.RoomType)</div>
+                            <small class="text-muted">Advance 1st Month Rental</small>
+                        </td>
+                        <td>@booking.StartDate.ToString("MMM yyyy")</td>
+                        <td class="text-end">RM @booking.AgreedMonthlyRent.ToString("N2")</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="fw-bold">Security Deposit (Refundable)</div>
+                            <small class="text-muted">Equivalent to 2 months rent</small>
+                        </td>
+                        <td>Tenure: @booking.DurationMonths Months</td>
+                        <td class="text-end">RM @room.SecurityDeposit.ToString("N2")</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="fw-bold">Utility Deposit (Refundable)</div>
+                            <small class="text-muted">Water, electricity, and sewerage guarantee</small>
+                        </td>
+                        <td>Tenure: @booking.DurationMonths Months</td>
+                        <td class="text-end">RM @room.UtilityDeposit.ToString("N2")</td>
+                    </tr>
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th colspan="2" class="text-end">Total Paid:</th>
+                        <th class="text-end text-success fs-5">RM @Model.Amount.ToString("N2")</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Payment Meta & Terms -->
+        <div class="p-3 bg-light rounded-3 small text-muted mb-4 border">
+            <div><strong>Payment Method:</strong> @Model.PaymentMethod</div>
+            <div><strong>Transaction Reference:</strong> @Model.TransactionRef</div>
+            <div><strong>Tenancy Tenure:</strong> @booking.StartDate.ToString("dd MMM yyyy") to @booking.EndDate.ToString("dd MMM yyyy") (@booking.DurationMonths Months)</div>
+        </div>
+
+        <div class="text-center text-muted small border-top pt-3">
+            <p class="mb-0">This is a system-generated electronic receipt created under the BMIT2023 HomeNest System. No physical signature is required.</p>
+        </div>
+    </div>
+</div>
+

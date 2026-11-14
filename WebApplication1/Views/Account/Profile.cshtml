@@ -1,0 +1,63 @@
+@model HomeNest.Models.User
+
+@{
+    ViewData["Title"] = "My Profile";
+}
+
+<div class="row justify-content-center my-4">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm p-4 p-md-5 rounded-4">
+            <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
+                <div class="rounded-circle text-white d-flex align-items-center justify-content-center me-3" style="width: 56px; height: 56px; background:#0d9488; font-size: 1.5rem;">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-0" style="color:#0f172a;">User Profile</h3>
+                    <span class="badge" style="background:#ecfdf5; color:#059669; font-weight:700;">@Model.Role</span>
+                    <small class="text-muted ms-2">Member since @Model.CreatedAt.ToString("MMM yyyy")</small>
+                </div>
+            </div>
+
+            <form asp-action="Profile" method="post">
+                @Html.AntiForgeryToken()
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Registered Email (Read-Only)</label>
+                    <input type="email" class="form-control bg-light" value="@Model.Email" readonly />
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Full Name *</label>
+                        <input type="text" name="fullName" class="form-control" value="@Model.FullName" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Phone Number *</label>
+                        <input type="text" name="phoneNumber" class="form-control" value="@Model.PhoneNumber" required />
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">Change Password (Optional)</h5>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Current Password</label>
+                        <input type="password" name="currentPassword" class="form-control" placeholder="••••••••" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">New Password</label>
+                        <input type="password" name="newPassword" class="form-control" placeholder="Min. 8 characters" />
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <a asp-controller="Property" asp-action="Catalog" class="btn btn-outline-secondary">Back</a>
+                    <button type="submit" class="btn btn-primary px-4" style="background:#0d9488; border-color:#0d9488;">
+                        Save Profile Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
