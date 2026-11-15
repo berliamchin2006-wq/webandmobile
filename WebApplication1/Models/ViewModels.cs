@@ -58,6 +58,18 @@ namespace HomeNest.Models
         public string Captcha { get; set; } = "";
     }
 
+    public class VerifyEmailVM
+    {
+        [Required(ErrorMessage = "Email address is required.")]
+        [EmailAddress(ErrorMessage = "Invalid email format.")]
+        public string Email { get; set; } = "";
+
+        [Required(ErrorMessage = "6-digit OTP code is required.")]
+        [StringLength(6, MinimumLength = 6, ErrorMessage = "Verification code must be exactly 6 digits.")]
+        [RegularExpression(@"^\d{6}$", ErrorMessage = "Code must consist of 6 digits.")]
+        public string OtpCode { get; set; } = "";
+    }
+
     public class ForgotPasswordVM
     {
         [Required(ErrorMessage = "Email is required.")]

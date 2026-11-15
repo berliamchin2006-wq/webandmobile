@@ -25,6 +25,7 @@ namespace HomeNest
 
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddScoped<Helper>();
+            builder.Services.AddScoped<HomeNest.Services.EmailService>();
 
             // Manual Cookie-Based Authentication
             builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

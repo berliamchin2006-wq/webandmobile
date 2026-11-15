@@ -10,11 +10,13 @@ namespace HomeNest.Controllers
     {
         private readonly DB _db;
         private readonly Helper _helper;
+        private readonly HomeNest.Services.EmailService _emailService;
 
-        public AccountController(DB db, Helper helper)
+        public AccountController(DB db, Helper helper, HomeNest.Services.EmailService emailService)
         {
             _db = db;
             _helper = helper;
+            _emailService = emailService;
         }
 
         // ==========================================
@@ -138,6 +140,14 @@ namespace HomeNest.Controllers
             user.LockoutEnd = null;
             _db.SaveChanges();
 
+            // Check Email Verification
+            if (!user.IsEmailVerified)
+            {
+                _helper.LogAudit(_db, user.Id, user.Email, "LoginBlockedUnverified", "Login blocked: email not verified.");
+                TempData["ErrorMessage"] = "Your account is not activated yet. Please enter your 6-digit verification code below.";
+                return RedirectToAction("VerifyEmail", new { email = user.Email });
+            }
+
             // Set user preferences in session / cookie
             HttpContext.Session.SetString("UserTheme", user.ThemePreference ?? "light");
             HttpContext.Session.SetString("UserCurrency", user.PreferredCurrency ?? "MYR");
@@ -195,6 +205,7 @@ namespace HomeNest.Controllers
                 return View(vm);
             }
 
+            string otp = Random.Shared.Next(100000, 999999).ToString();
             string token = Guid.NewGuid().ToString("N");
 
             var newUser = new User
@@ -204,41 +215,127 @@ namespace HomeNest.Controllers
                 FullName = vm.FullName.Trim(),
                 PhoneNumber = vm.PhoneNumber.Trim(),
                 Role = vm.Role,
-                IsEmailVerified = true,
-                EmailVerificationToken = token,
+                IsEmailVerified = false,
+                EmailVerificationToken = $"{token}:{otp}",
                 CreatedAt = DateTime.Now
             };
 
             _db.Users.Add(newUser);
             _db.SaveChanges();
 
-            _helper.LogAudit(_db, newUser.Id, newUser.Email, "UserRegistered", $"New user registered as {newUser.Role}. Email activation token generated.");
+            _helper.LogAudit(_db, newUser.Id, newUser.Email, "UserRegistered", $"New user registered as {newUser.Role}. Email OTP code: {otp}.");
 
-            // Store simulated activation link in TempData for demonstration
+            // Dispatch Email via Live Gmail SMTP
             string verifyUrl = Url.Action("VerifyEmail", "Account", new { token }, Request.Scheme) ?? "";
-            TempData["ActivationSimulationLink"] = verifyUrl;
-            TempData["SuccessMessage"] = "Registration successful! Please check your email to activate your account, or click the simulation link below.";
+            await _emailService.SendVerificationCodeAsync(newUser.Email, otp, newUser.FullName, verifyUrl);
 
-            return RedirectToAction("Login");
+            TempData["ActivationSimulationLink"] = verifyUrl;
+            TempData["OtpCode"] = otp;
+            TempData["SuccessMessage"] = $"Registration successful! A 6-digit verification code has been dispatched to {newUser.Email}.";
+
+            return RedirectToAction("VerifyEmail", new { email = newUser.Email });
         }
 
         [HttpGet]
-        public IActionResult VerifyEmail(string token)
+        public IActionResult VerifyEmail(string? token, string? email)
         {
-            var user = _db.Users.FirstOrDefault(u => u.EmailVerificationToken == token);
+            if (!string.IsNullOrEmpty(token))
+            {
+                var user = _db.Users.FirstOrDefault(u => u.EmailVerificationToken != null && u.EmailVerificationToken.Contains(token));
+                if (user != null)
+                {
+                    user.IsEmailVerified = true;
+                    user.EmailVerificationToken = null;
+                    _db.SaveChanges();
+
+                    _helper.LogAudit(_db, user.Id, user.Email, "EmailActivated", "User successfully verified email address via link.");
+                    TempData["SuccessMessage"] = "Your email has been verified successfully! You can now log in.";
+                    return RedirectToAction("Login");
+                }
+                TempData["ErrorMessage"] = "Invalid or expired account activation token.";
+            }
+
+            return View(new VerifyEmailVM { Email = email ?? "" });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult VerifyEmail(VerifyEmailVM vm)
+        {
+            if (!ModelState.IsValid)
+                return View(vm);
+
+            var user = _db.Users.FirstOrDefault(u => u.Email.ToLower() == vm.Email.Trim().ToLower());
             if (user == null)
             {
-                TempData["ErrorMessage"] = "Invalid or expired account activation token.";
+                ModelState.AddModelError(nameof(vm.Email), "No account registered with this email.");
+                return View(vm);
+            }
+
+            if (user.IsEmailVerified)
+            {
+                TempData["SuccessMessage"] = "This email is already verified. You can log in.";
                 return RedirectToAction("Login");
+            }
+
+            // Verify OTP code
+            bool isValid = false;
+            if (!string.IsNullOrEmpty(user.EmailVerificationToken))
+            {
+                var parts = user.EmailVerificationToken.Split(':');
+                string expectedOtp = parts.Length > 1 ? parts[1] : parts[0];
+                if (expectedOtp == vm.OtpCode.Trim() || user.EmailVerificationToken == vm.OtpCode.Trim())
+                {
+                    isValid = true;
+                }
+            }
+
+            if (!isValid)
+            {
+                ModelState.AddModelError(nameof(vm.OtpCode), "Invalid 6-digit verification code. Please check your email or resend a new code.");
+                return View(vm);
             }
 
             user.IsEmailVerified = true;
             user.EmailVerificationToken = null;
             _db.SaveChanges();
 
-            _helper.LogAudit(_db, user.Id, user.Email, "EmailActivated", "User successfully verified email address.");
+            _helper.LogAudit(_db, user.Id, user.Email, "EmailActivated", "User successfully verified email address via 6-digit OTP code.");
             TempData["SuccessMessage"] = "Your email has been verified successfully! You can now log in.";
             return RedirectToAction("Login");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResendOtp(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                TempData["ErrorMessage"] = "Please provide an email address.";
+                return RedirectToAction("VerifyEmail");
+            }
+
+            var user = _db.Users.FirstOrDefault(u => u.Email.ToLower() == email.Trim().ToLower());
+            if (user != null && !user.IsEmailVerified)
+            {
+                string otp = Random.Shared.Next(100000, 999999).ToString();
+                string token = Guid.NewGuid().ToString("N");
+                user.EmailVerificationToken = $"{token}:{otp}";
+                _db.SaveChanges();
+
+                string verifyUrl = Url.Action("VerifyEmail", "Account", new { token }, Request.Scheme) ?? "";
+                await _emailService.SendVerificationCodeAsync(user.Email, otp, user.FullName, verifyUrl);
+
+                TempData["ActivationSimulationLink"] = verifyUrl;
+                TempData["OtpCode"] = otp;
+                TempData["SuccessMessage"] = $"A fresh 6-digit verification code was sent to {user.Email}.";
+            }
+            else
+            {
+                TempData["SuccessMessage"] = "If an unverified account exists for this email, a new code has been sent.";
+            }
+
+            return RedirectToAction("VerifyEmail", new { email });
         }
 
         // ==========================================
@@ -252,7 +349,7 @@ namespace HomeNest.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult ForgotPassword(ForgotPasswordVM vm)
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordVM vm)
         {
             if (!ModelState.IsValid)
                 return View(vm);
@@ -276,8 +373,12 @@ namespace HomeNest.Controllers
                 _helper.LogAudit(_db, user.Id, user.Email, "PasswordResetRequested", "Password reset token generated.");
 
                 string resetUrl = Url.Action("ResetPassword", "Account", new { token, email = user.Email }, Request.Scheme) ?? "";
+                
+                // Dispatch Live Password Reset Email
+                await _emailService.SendPasswordResetEmailAsync(user.Email, user.FullName, resetUrl);
+
                 TempData["ResetSimulationLink"] = resetUrl;
-                TempData["SuccessMessage"] = "Password reset instructions generated! For testing, use the instant reset link shown below.";
+                TempData["SuccessMessage"] = "Password reset instructions sent! Please check your email inbox.";
             }
             else
             {

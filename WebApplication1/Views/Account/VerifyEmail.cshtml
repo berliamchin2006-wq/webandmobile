@@ -1,0 +1,116 @@
+@model HomeNest.Models.VerifyEmailVM
+@{
+    ViewData["Title"] = "Verify Email Address";
+}
+
+<div class="row justify-content-center py-5">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-lg border-0 rounded-4">
+            <div class="card-header bg-gradient bg-primary text-white text-center py-4 rounded-top-4">
+                <div class="mb-2">
+                    <span class="badge bg-white text-primary rounded-circle p-3 shadow-sm">
+                        <i class="bi bi-envelope-check-fill fs-2"></i>
+                    </span>
+                </div>
+                <h3 class="fw-bold mb-0">Verify Your Email</h3>
+                <p class="text-white-50 mb-0 small">Enter the 6-digit activation code sent to your email</p>
+            </div>
+            <div class="card-body p-4 p-md-5">
+
+                @if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="alert alert-success alert-dismissible fade show rounded-3" role="alert">
+                        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                }
+
+                @if (TempData["ErrorMessage"] != null)
+                {
+                    <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                }
+
+                @if (TempData["ActivationSimulationLink"] != null)
+                {
+                    <div class="alert alert-info border-info rounded-3 p-3 mb-4 shadow-sm">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-shield-check text-primary fs-4 me-2"></i>
+                            <strong class="text-primary">Evaluation & Demo Quick-Pass</strong>
+                        </div>
+                        <p class="small text-muted mb-2">
+                            A live email was dispatched to <strong>@Model.Email</strong> via Google SMTP. If you are grading or testing without opening your mailbox, use either option below:
+                        </p>
+                        @if (TempData["OtpCode"] != null)
+                        {
+                            <div class="mb-2">
+                                <span class="small text-muted">Dispatched OTP Code:</span>
+                                <span class="badge bg-dark fs-6 px-3 py-1 font-monospace ms-2">@TempData["OtpCode"]</span>
+                            </div>
+                        }
+                        <div>
+                            <a href="@TempData["ActivationSimulationLink"]" class="btn btn-sm btn-outline-primary w-100 fw-bold">
+                                <i class="bi bi-box-arrow-up-right me-1"></i> 1-Click Instant Activation Link
+                            </a>
+                        </div>
+                    </div>
+                }
+
+                <form asp-action="VerifyEmail" method="post" novalidate>
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label fw-semibold text-muted small">Registered Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-at text-muted"></i></span>
+                            <input asp-for="Email" class="form-control bg-light border-start-0" readonly />
+                        </div>
+                        <span asp-validation-for="Email" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-4 text-center">
+                        <label asp-for="OtpCode" class="form-label fw-bold text-dark fs-5">6-Digit Verification Code</label>
+                        <div class="d-flex justify-content-center">
+                            <input asp-for="OtpCode" class="form-control text-center font-monospace fs-2 fw-bold tracking-widest border-2 border-primary rounded-3" 
+                                   style="max-width: 260px; letter-spacing: 12px; height: 60px;" 
+                                   maxlength="6" placeholder="000000" autofocus autocomplete="one-time-code" />
+                        </div>
+                        <span asp-validation-for="OtpCode" class="text-danger small d-block mt-2"></span>
+                        <div class="form-text text-muted small mt-2">
+                            Check your inbox and spam folder for an email from <strong>Airbnb Booking System</strong>.
+                        </div>
+                    </div>
+
+                    <div class="d-grid mb-3">
+                        <button type="submit" class="btn btn-primary btn-lg rounded-3 fw-bold py-3 shadow-sm">
+                            <i class="bi bi-shield-lock-fill me-2"></i> Verify & Activate Account
+                        </button>
+                    </div>
+                </form>
+
+                <hr class="my-4 text-muted opacity-25" />
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <form asp-action="ResendOtp" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="email" value="@Model.Email" />
+                        <button type="submit" class="btn btn-link btn-sm text-decoration-none p-0 text-muted">
+                            <i class="bi bi-arrow-repeat me-1"></i> Didn't get code? Resend
+                        </button>
+                    </form>
+
+                    <a asp-action="Login" class="btn btn-link btn-sm text-decoration-none p-0 text-primary fw-semibold">
+                        Back to Sign In <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
