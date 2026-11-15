@@ -7,15 +7,18 @@
     int upcomingDepartures = ViewBag.UpcomingDepartures != null ? (int)ViewBag.UpcomingDepartures : 0;
 }
 
-<div class="container py-4">
+<div class="taste-wrap py-4">
     
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
         <div>
-            <span class="badge bg-primary bg-opacity-75 rounded-pill px-3 py-1 mb-1">Module 7.1: Host Performance Dashboard</span>
-            <h2 class="fw-bold mb-0">Host Performance Analytics</h2>
+            <span class="badge bg-primary-subtle text-primary-emphasis rounded-pill px-3 py-1 mb-2 font-monospace" style="font-size:0.75rem;">
+                <i class="bi bi-graph-up-arrow me-1"></i> Host Intelligence
+            </span>
+            <h2 class="fw-bold mb-1 text-dark-emphasis" style="letter-spacing: var(--tracking-tight);">Host Performance Analytics</h2>
+            <p class="text-muted small mb-0">Real-time revenue metrics, reservation distribution, and check-in turnover</p>
         </div>
-        <div class="d-flex gap-2 mt-3 mt-md-0">
-            <a asp-action="HostEarnings" class="btn btn-outline-dark rounded-pill px-3">
+        <div class="d-flex gap-2">
+            <a asp-action="HostEarnings" class="btn btn-outline-taste rounded-pill px-3">
                 <i class="bi bi-wallet2 me-1"></i> Earnings Ledger
             </a>
             <a asp-action="QrScanner" class="btn btn-airbnb rounded-pill px-4">
@@ -24,33 +27,33 @@
         </div>
     </div>
 
-    <!-- KPI CARDS -->
+    <!-- KPI METRIC CARDS -->
     <div class="row g-3 mb-4">
         <div class="col-6 col-lg-3">
-            <div class="card border rounded-4 p-3 shadow-sm bg-white">
-                <span class="text-muted small text-uppercase fw-bold">Total Host Revenue</span>
-                <h3 class="fw-bold text-success mt-1 mb-0" data-base-price="@totalEarnings">RM @totalEarnings.ToString("N2")</h3>
+            <div class="card-custom p-4">
+                <span class="text-muted small text-uppercase fw-bold" style="letter-spacing:0.04em;">Host Revenue</span>
+                <h3 class="fw-bold text-success mt-2 mb-1" data-base-price="@totalEarnings">RM @totalEarnings.ToString("N2")</h3>
                 <small class="text-muted">Net payouts received</small>
             </div>
         </div>
         <div class="col-6 col-lg-3">
-            <div class="card border rounded-4 p-3 shadow-sm bg-white">
-                <span class="text-muted small text-uppercase fw-bold">Nights Booked</span>
-                <h3 class="fw-bold text-primary mt-1 mb-0">@totalNights nights</h3>
+            <div class="card-custom p-4">
+                <span class="text-muted small text-uppercase fw-bold" style="letter-spacing:0.04em;">Nights Booked</span>
+                <h3 class="fw-bold text-primary mt-2 mb-1">@totalNights nights</h3>
                 <small class="text-muted">Across all properties</small>
             </div>
         </div>
         <div class="col-6 col-lg-3">
-            <div class="card border rounded-4 p-3 shadow-sm bg-white">
-                <span class="text-muted small text-uppercase fw-bold">Arrivals Today</span>
-                <h3 class="fw-bold text-dark mt-1 mb-0">@upcomingArrivals</h3>
+            <div class="card-custom p-4">
+                <span class="text-muted small text-uppercase fw-bold" style="letter-spacing:0.04em;">Arrivals Today</span>
+                <h3 class="fw-bold text-dark-emphasis mt-2 mb-1">@upcomingArrivals</h3>
                 <small class="text-muted">Scheduled check-ins</small>
             </div>
         </div>
         <div class="col-6 col-lg-3">
-            <div class="card border rounded-4 p-3 shadow-sm bg-white">
-                <span class="text-muted small text-uppercase fw-bold">Departures Today</span>
-                <h3 class="fw-bold text-dark mt-1 mb-0">@upcomingDepartures</h3>
+            <div class="card-custom p-4">
+                <span class="text-muted small text-uppercase fw-bold" style="letter-spacing:0.04em;">Departures Today</span>
+                <h3 class="fw-bold text-dark-emphasis mt-2 mb-1">@upcomingDepartures</h3>
                 <small class="text-muted">Check-outs scheduled</small>
             </div>
         </div>
@@ -59,10 +62,10 @@
     <!-- INTERACTIVE CHARTS (CHART.JS) -->
     <div class="row g-4 mb-4">
         <div class="col-12 col-lg-7">
-            <div class="card border rounded-4 p-4 shadow-sm bg-white h-100">
+            <div class="card-custom p-4 h-100">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold mb-0"><i class="bi bi-bar-chart-fill text-danger me-2"></i> Monthly Earnings (MYR)</h5>
-                    <span class="badge bg-light text-dark border">Last 6 Months</span>
+                    <h5 class="fw-bold mb-0 text-dark-emphasis"><i class="bi bi-bar-chart-fill text-danger me-2"></i> Monthly Earnings (MYR)</h5>
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill">Last 6 Months</span>
                 </div>
                 <div style="height: 280px;">
                     <canvas id="monthlyEarningsChart"></canvas>
@@ -71,10 +74,10 @@
         </div>
 
         <div class="col-12 col-lg-5">
-            <div class="card border rounded-4 p-4 shadow-sm bg-white h-100">
+            <div class="card-custom p-4 h-100">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold mb-0"><i class="bi bi-pie-chart-fill text-primary me-2"></i> Listing Share</h5>
-                    <span class="badge bg-light text-dark border">By Bookings</span>
+                    <h5 class="fw-bold mb-0 text-dark-emphasis"><i class="bi bi-pie-chart-fill text-primary me-2"></i> Listing Share</h5>
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill">By Bookings</span>
                 </div>
                 <div style="height: 280px;">
                     <canvas id="listingPieChart"></canvas>
@@ -84,44 +87,44 @@
     </div>
 
     <!-- LISTING BREAKDOWN TABLE -->
-    <div class="card border rounded-4 shadow-sm overflow-hidden bg-white">
-        <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
-            <h5 class="fw-bold mb-0">Individual Listing Performance</h5>
+    <div class="card-custom overflow-hidden">
+        <div class="p-3 border-bottom d-flex justify-content-between align-items-center" style="border-color: var(--p-line) !important; background: var(--p-surface);">
+            <h5 class="fw-bold mb-0 text-dark-emphasis">Individual Listing Performance</h5>
             <span class="text-muted small">@Model.Count listings</span>
         </div>
 
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+                <thead style="background: var(--p-surface); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--p-muted);">
                     <tr>
-                        <th>Listing</th>
+                        <th class="ps-4">Listing</th>
                         <th>Type & City</th>
                         <th>Base Rate</th>
                         <th>Total Bookings</th>
                         <th>Average Rating</th>
                         <th>Status</th>
-                        <th class="text-end">Manage</th>
+                        <th class="pe-4 text-end">Manage</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody style="font-size:0.88rem;">
                     @foreach (var p in Model)
                     {
                         double avgRating = p.Reviews.Any() ? Math.Round(p.Reviews.Average(r => r.OverallRating), 1) : 5.0;
                         <tr>
-                            <td>
-                                <strong>@p.Title</strong>
+                            <td class="ps-4">
+                                <strong class="text-dark-emphasis">@p.Title</strong>
                             </td>
-                            <td>@p.PropertyType, @p.City</td>
-                            <td><strong data-base-price="@p.BaseNightlyRate">RM @p.BaseNightlyRate.ToString("N0")</strong></td>
-                            <td><span class="badge bg-primary rounded-pill">@p.Bookings.Count</span></td>
+                            <td class="text-muted">@p.PropertyType, @p.City</td>
+                            <td><strong class="text-dark-emphasis" data-base-price="@p.BaseNightlyRate">RM @p.BaseNightlyRate.ToString("N0")</strong></td>
+                            <td><span class="badge bg-primary-subtle text-primary-emphasis rounded-pill px-3">@p.Bookings.Count</span></td>
                             <td><span class="text-warning fw-bold"><i class="bi bi-star-fill"></i> @avgRating</span></td>
                             <td>
-                                <span class="badge @(p.IsActive ? "bg-success" : "bg-secondary") rounded-pill">
+                                <span class="badge @(p.IsActive ? "bg-success-subtle text-success border border-success-subtle" : "bg-secondary-subtle text-secondary") rounded-pill px-3 py-1">
                                     @(p.IsActive ? "Active" : "Paused")
                                 </span>
                             </td>
-                            <td class="text-end">
-                                <a asp-controller="Property" asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-outline-dark rounded-pill px-3">
+                            <td class="pe-4 text-end">
+                                <a asp-controller="Property" asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-outline-taste rounded-pill px-3">
                                     Edit
                                 </a>
                             </td>
@@ -196,4 +199,3 @@
         });
     </script>
 }
-

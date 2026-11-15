@@ -3,24 +3,27 @@
     ViewData["Title"] = "My Wishlists & Trip Folders";
 }
 
-<div class="container py-4">
+<div class="taste-wrap py-4">
     
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
         <div>
-            <span class="badge bg-danger bg-opacity-75 rounded-pill px-3 py-1 mb-1">[Additional Feature] Guest Wishlist with Trip Folders</span>
-            <h2 class="fw-bold mb-0">Saved Homes & Trip Collections</h2>
+            <span class="badge bg-danger-subtle text-danger-emphasis rounded-pill px-3 py-1 mb-2 font-monospace" style="font-size:0.75rem;">
+                <i class="bi bi-heart-fill me-1"></i> Trip Collections
+            </span>
+            <h2 class="fw-bold mb-1 text-dark-emphasis" style="letter-spacing: var(--tracking-tight);">Saved Homes & Trip Collections</h2>
+            <p class="text-muted small mb-0">Organize and revisit your dream stays across Malaysia</p>
         </div>
-        <a asp-action="Catalog" class="btn btn-outline-dark rounded-pill px-4">
-            <i class="bi bi-compass"></i> Explore Stays
+        <a asp-action="Catalog" class="btn btn-outline-taste rounded-pill px-4">
+            <i class="bi bi-compass me-1"></i> Explore More Stays
         </a>
     </div>
 
     @if (!Model.Any() || Model.All(g => !g.Value.Any()))
     {
-        <div class="text-center py-5 border rounded-4 bg-light">
+        <div class="text-center py-5 border rounded-4 bg-surface shadow-sm" style="border-radius: var(--r-xl) !important; background: var(--p-surface); border-color: var(--p-line) !important;">
             <i class="bi bi-heart fs-1 text-danger"></i>
-            <h4 class="mt-3 fw-bold">Your wishlist is empty</h4>
-            <p class="text-muted">As you search, tap the heart icon on any property to save your favorite stays and plan your trips.</p>
+            <h4 class="mt-3 fw-bold text-dark-emphasis">Your wishlist is empty</h4>
+            <p class="text-muted" style="font-size:0.92rem;">As you search, tap the heart icon on any property to save your favorite stays and plan your trips.</p>
             <a asp-action="Catalog" class="btn btn-airbnb rounded-pill px-4 mt-2">Start Exploring</a>
         </div>
     }
@@ -31,8 +34,8 @@
             <div class="mb-5">
                 <div class="d-flex align-items-center gap-2 mb-3">
                     <i class="bi bi-folder-fill fs-4 text-warning"></i>
-                    <h4 class="fw-bold mb-0">@folder.Key</h4>
-                    <span class="badge bg-secondary-subtle text-secondary rounded-pill">@folder.Value.Count stay@(folder.Value.Count > 1 ? "s" : "")</span>
+                    <h4 class="fw-bold mb-0 text-dark-emphasis">@folder.Key</h4>
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill">@folder.Value.Count stay@(folder.Value.Count > 1 ? "s" : "")</span>
                 </div>
 
                 <div class="row g-4">
@@ -46,30 +49,39 @@
                         double avgRating = p.Reviews.Any() ? Math.Round(p.Reviews.Average(r => r.OverallRating), 1) : 5.0;
 
                         <div class="col-12 col-md-6 col-lg-4">
-                            <div class="card h-100 border rounded-4 shadow-sm overflow-hidden position-relative">
+                            <div class="card-custom h-100 position-relative">
                                 
-                                <div style="height: 200px; overflow: hidden;">
-                                    <img src="@cover" class="w-100 h-100 object-fit-cover" />
-                                </div>
+                                <a asp-action="Details" asp-route-id="@p.Id" class="text-decoration-none">
+                                    <div class="taste-photo-frame" style="height: 200px;">
+                                        <img src="@cover" alt="@p.Title" />
+                                        <span class="taste-type-badge">
+                                            @p.PropertyType
+                                        </span>
+                                    </div>
+                                </a>
 
-                                <div class="p-3">
-                                    <div class="d-flex justify-content-between align-items-baseline mb-1">
-                                        <span class="fw-bold text-dark text-truncate" style="max-width:70%;">@p.City, @p.State</span>
-                                        <span class="fw-semibold text-dark" style="font-size:0.85rem;"><i class="bi bi-star-fill text-warning"></i> @avgRating</span>
+                                <div class="p-3 d-flex flex-column justify-content-between flex-grow-1">
+                                    <div>
+                                        <div class="d-flex justify-content-between align-items-baseline mb-1">
+                                            <span class="fw-bold text-dark-emphasis text-truncate" style="max-width:70%; font-size:0.95rem;">@p.City, @p.State</span>
+                                            <span class="fw-semibold text-dark-emphasis" style="font-size:0.86rem;"><i class="bi bi-star-fill text-warning"></i> @avgRating</span>
+                                        </div>
+
+                                        <a asp-action="Details" asp-route-id="@p.Id" class="text-decoration-none">
+                                            <p class="text-muted mb-2 text-truncate" style="font-size:0.88rem;" title="@p.Title">@p.Title</p>
+                                        </a>
                                     </div>
 
-                                    <h6 class="fw-normal text-muted mb-2 text-truncate" title="@p.Title">@p.Title</h6>
-
-                                    <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                    <div class="d-flex justify-content-between align-items-center pt-2 border-top" style="border-color: var(--p-line) !important;">
                                         <div>
-                                            <strong class="fs-5 text-dark" data-base-price="@p.BaseNightlyRate">RM @p.BaseNightlyRate.ToString("N0")</strong>
+                                            <strong class="fs-5 text-dark-emphasis" data-base-price="@p.BaseNightlyRate">RM @p.BaseNightlyRate.ToString("N0")</strong>
                                             <span class="text-muted" style="font-size:0.8rem;"> / night</span>
                                         </div>
                                         <div class="d-flex gap-2">
-                                            <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-outline-dark rounded-pill px-3">
-                                                View
+                                            <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-outline-taste rounded-pill px-3">
+                                                View Stay
                                             </a>
-                                            <button type="button" class="btn btn-sm btn-outline-danger rounded-circle btn-remove-wishlist" data-property-id="@p.Id" title="Remove from Wishlist">
+                                            <button type="button" class="btn btn-sm btn-outline-danger rounded-circle btn-remove-wishlist d-flex align-items-center justify-content-center" data-property-id="@p.Id" title="Remove from Wishlist" style="width:34px; height:34px;">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </div>
@@ -105,4 +117,3 @@
         });
     </script>
 }
-

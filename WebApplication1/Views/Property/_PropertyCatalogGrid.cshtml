@@ -6,11 +6,17 @@
 @if (Model == null || !Model.Any())
 {
     <div class="col-12 text-center py-5">
-        <div class="p-5 border rounded-4 bg-light">
-            <i class="bi bi-search fs-1 text-muted"></i>
-            <h4 class="mt-3 fw-bold">No properties match your search criteria</h4>
-            <p class="text-muted">Try adjusting your dates, expanding your price range, or clearing amenity filters.</p>
-            <a href="/Property/Catalog" class="btn btn-outline-dark rounded-pill px-4">Reset All Filters</a>
+        <div class="p-5 border rounded-4 bg-light shadow-sm" style="border-radius: var(--r-xl) !important; max-width: 620px; margin: 0 auto;">
+            <div class="mb-3">
+                <i class="bi bi-search fs-1 text-muted"></i>
+            </div>
+            <h4 class="fw-bold text-dark-emphasis mb-2">No vacation stays match your criteria</h4>
+            <p class="text-muted mb-4" style="font-size:0.92rem;">
+                Try adjusting your dates, expanding your nightly price range, or clearing amenity filters.
+            </p>
+            <a href="/Property/Catalog" class="btn btn-airbnb rounded-pill px-4">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> Reset All Filters
+            </a>
         </div>
     </div>
 }
@@ -27,64 +33,70 @@ else
         bool isSaved = wishlistIds.Contains(p.Id);
 
         <div class="col-md-6 col-lg-4">
-            <div class="card-custom h-100 position-relative">
+            <div class="card-custom position-relative">
                 
-                <!-- Wishlist Heart Button -->
+                <!-- Wishlist Heart Button (Micro-Interaction) -->
                 <button type="button" 
-                        class="btn-wishlist position-absolute top-0 end-0 m-3 btn btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center"
-                        style="background: rgba(255,255,255,0.9); width:36px; height:36px; z-index:10;"
+                        class="btn-wishlist taste-wishlist-btn"
                         data-property-id="@p.Id"
-                        title="Save to Wishlist">
-                    <i class="bi @(isSaved ? "bi-heart-fill text-danger" : "bi-heart text-dark") fs-6 heart-icon-@p.Id"></i>
+                        title="Save to Wishlist"
+                        aria-label="Save to Wishlist">
+                    <i class="bi @(isSaved ? "bi-heart-fill text-danger" : "bi-heart") fs-6 heart-icon-@p.Id"></i>
                 </button>
 
-                <!-- Property Cover Image -->
+                <!-- Property Cover Image with Smooth 1.03 Zoom -->
                 <a asp-action="Details" asp-route-id="@p.Id" class="text-decoration-none">
-                    <div style="height: 240px; overflow: hidden; position: relative;">
-                        <img src="@cover" alt="@p.Title" class="w-100 h-100 object-fit-cover" loading="lazy" />
-                        <span class="position-absolute bottom-0 start-0 m-2 badge bg-dark bg-opacity-75 rounded-pill px-2 py-1" style="font-size:0.75rem;">
+                    <div class="taste-photo-frame">
+                        <img src="@cover" alt="@p.Title" loading="lazy" />
+                        <span class="taste-type-badge">
                             @p.PropertyType
                         </span>
                     </div>
                 </a>
 
                 <!-- Card Content -->
-                <div class="p-3">
-                    <div class="d-flex justify-content-between align-items-baseline mb-1">
-                        <span class="fw-bold text-dark text-truncate" style="max-width: 70%; font-size:0.95rem;">
-                            @p.City, @p.State
-                        </span>
-                        <span class="d-flex align-items-center gap-1 text-dark fw-semibold" style="font-size:0.88rem;">
-                            <i class="bi bi-star-fill text-warning" style="font-size:0.8rem;"></i>
-                            @(reviewCount > 0 ? avgRating.ToString("0.0") : "New")
-                            @if (reviewCount > 0)
-                            {
-                                <span class="text-muted" style="font-size:0.78rem;">(@reviewCount)</span>
-                            }
-                        </span>
-                    </div>
-
-                    <a asp-action="Details" asp-route-id="@p.Id" class="text-decoration-none text-secondary">
-                        <p class="mb-2 text-truncate fw-normal text-muted" style="font-size:0.88rem;" title="@p.Title">
-                            @p.Title
-                        </p>
-                    </a>
-
-                    <div class="d-flex align-items-center gap-2 text-muted mb-2" style="font-size:0.8rem;">
-                        <span><i class="bi bi-people"></i> Up to @p.MaxGuests guests</span>
-                        <span>•</span>
-                        <span><i class="bi bi-door-closed"></i> @p.Bedrooms bed</span>
-                        <span>•</span>
-                        <span><i class="bi bi-droplet"></i> @p.Bathrooms bath</span>
-                    </div>
-
-                    <div class="d-flex justify-content-between align-items-baseline pt-2 border-top">
-                        <div>
-                            <span class="fw-bolder fs-5 text-dark" data-base-price="@p.BaseNightlyRate">RM @p.BaseNightlyRate.ToString("N0")</span>
-                            <span class="text-muted" style="font-size:0.85rem;"> / night</span>
+                <div class="p-3 d-flex flex-column flex-grow-1 justify-content-between">
+                    <div>
+                        <!-- Location & Ratings Row -->
+                        <div class="d-flex justify-content-between align-items-baseline mb-1">
+                            <span class="fw-bold text-dark-emphasis text-truncate" style="max-width: 68%; font-size:0.95rem;">
+                                @p.City, @p.State
+                            </span>
+                            <span class="d-flex align-items-center gap-1 text-dark-emphasis fw-semibold" style="font-size:0.86rem;">
+                                <i class="bi bi-star-fill text-warning" style="font-size:0.8rem;"></i>
+                                @(reviewCount > 0 ? avgRating.ToString("0.0") : "New")
+                                @if (reviewCount > 0)
+                                {
+                                    <span class="text-muted fw-normal" style="font-size:0.78rem;">(@reviewCount)</span>
+                                }
+                            </span>
                         </div>
-                        <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-outline-dark rounded-pill px-3">
-                            View Deal
+
+                        <!-- Title Link -->
+                        <a asp-action="Details" asp-route-id="@p.Id" class="text-decoration-none">
+                            <p class="mb-2 text-truncate text-muted" style="font-size:0.88rem; font-weight:400;" title="@p.Title">
+                                @p.Title
+                            </p>
+                        </a>
+
+                        <!-- Amenities Spec Line -->
+                        <div class="d-flex align-items-center gap-2 text-muted mb-3" style="font-size:0.8rem;">
+                            <span><i class="bi bi-people"></i> @p.MaxGuests guests</span>
+                            <span>·</span>
+                            <span><i class="bi bi-door-closed"></i> @p.Bedrooms bed</span>
+                            <span>·</span>
+                            <span><i class="bi bi-droplet"></i> @p.Bathrooms bath</span>
+                        </div>
+                    </div>
+
+                    <!-- Nightly Rate & Action CTA -->
+                    <div class="d-flex justify-content-between align-items-center pt-2 border-top" style="border-color: var(--p-line) !important;">
+                        <div>
+                            <span class="fw-bolder fs-5 text-dark-emphasis" data-base-price="@p.BaseNightlyRate">RM @p.BaseNightlyRate.ToString("N0")</span>
+                            <span class="text-muted" style="font-size:0.82rem;"> / night</span>
+                        </div>
+                        <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-outline-taste rounded-pill px-3">
+                            View Stay
                         </a>
                     </div>
                 </div>
@@ -92,25 +104,29 @@ else
         </div>
     }
 
-    <!-- Pagination -->
+    <!-- PAGINATION -->
     @if (ViewBag.TotalPages > 1)
     {
         <div class="col-12 mt-4">
-            <nav class="d-flex justify-content-center">
-                <ul class="pagination pagination-rounded shadow-sm">
+            <nav class="d-flex justify-content-center" aria-label="Catalog pagination">
+                <ul class="pagination pagination-rounded gap-1 shadow-sm p-1 bg-surface" style="border-radius: var(--r-full); background: var(--p-surface); border: 1px solid var(--p-line);">
                     <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
-                        <a class="page-link ajax-page-link" href="#" data-page="@(ViewBag.CurrentPage - 1)">
+                        <a class="page-link ajax-page-link border-0 rounded-pill px-3" href="#" data-page="@(ViewBag.CurrentPage - 1)" style="font-size:0.85rem; font-weight:600;">
                             <i class="bi bi-chevron-left"></i> Previous
                         </a>
                     </li>
                     @for (int i = 1; i <= ViewBag.TotalPages; i++)
                     {
                         <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
-                            <a class="page-link ajax-page-link" href="#" data-page="@i">@i</a>
+                            <a class="page-link ajax-page-link border-0 rounded-circle d-flex align-items-center justify-content-center" 
+                               href="#" data-page="@i" 
+                               style="width:36px; height:36px; font-size:0.85rem; font-weight:700; @(i == ViewBag.CurrentPage ? "background: var(--p-accent); color: white;" : "")">
+                                @i
+                            </a>
                         </li>
                     }
                     <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
-                        <a class="page-link ajax-page-link" href="#" data-page="@(ViewBag.CurrentPage + 1)">
+                        <a class="page-link ajax-page-link border-0 rounded-pill px-3" href="#" data-page="@(ViewBag.CurrentPage + 1)" style="font-size:0.85rem; font-weight:600;">
                             Next <i class="bi bi-chevron-right"></i>
                         </a>
                     </li>

@@ -1,0 +1,958 @@
+/* ==========================================================================
+   HomeNest Airbnb Platform - Taste Design System (tasteskill 2.5)
+   Disciplined anti-slop system: Equal content edges, 4/8pt spacing rhythm,
+   subtle micro-interactions, responsive precision, high tactile depth.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. DESIGN TOKENS & PALETTE
+   -------------------------------------------------------------------------- */
+:root {
+    /* Brand Accent (Signature Airbnb Coral-Rose) */
+    --p-accent: #ff385c;
+    --p-accent-hover: #e00b41;
+    --p-accent-active: #c9093a;
+    --p-accent-subtle: rgba(255, 56, 92, 0.08);
+    --p-accent-subtle-hover: rgba(255, 56, 92, 0.16);
+    --p-action: #ff385c;
+
+    /* Neutrals - Light Mode (Warm Architectural Off-White Ground + Crisp White Cards) */
+    --p-bg: #f8fafc;
+    --p-surface: #f1f5f9;
+    --p-surface-card: #ffffff;
+    --p-ink: #0f172a;
+    --p-ink-secondary: #334155;
+    --p-muted: #64748b;
+    --p-muted-light: #94a3b8;
+    --p-line: #e2e8f0;
+    --p-line-subtle: #f1f5f9;
+
+    /* Functional Accents */
+    --p-success: #10b981;
+    --p-success-subtle: #ecfdf5;
+    --p-warning: #f59e0b;
+    --p-warning-subtle: #fffbeb;
+    --p-danger: #ef4444;
+    --p-danger-subtle: #fef2f2;
+    --p-info: #0284c7;
+    --p-info-subtle: #f0f9ff;
+
+    /* Typography */
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --tracking-tight: -0.025em;
+    --tracking-normal: 0em;
+
+    /* Radius Scale */
+    --r-xs: 4px;
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 16px;
+    --r-xl: 20px;
+    --r-full: 9999px;
+    --r-btn: 12px;
+
+    /* Spacing Rhythm (4/8pt) */
+    --s-1: 4px;
+    --s-2: 8px;
+    --s-3: 12px;
+    --s-4: 16px;
+    --s-5: 24px;
+    --s-6: 32px;
+    --s-7: 48px;
+    --s-8: 64px;
+    --s-9: 96px;
+
+    /* Motion */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --dur-quick: 140ms;
+    --dur-normal: 220ms;
+    --dur-smooth: 450ms;
+
+    /* Shadows */
+    --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+    --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 10px 24px -4px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 18px 40px -8px rgba(15, 23, 42, 0.12);
+    --shadow-accent: 0 6px 18px rgba(255, 56, 92, 0.28);
+
+    /* Compatibility Mappings */
+    --card-bg: var(--p-surface-card);
+    --bg-color: var(--p-bg);
+    --text-color: var(--p-ink);
+    --border-color: var(--p-line);
+    --gray-100: var(--p-surface);
+    --gray-200: var(--p-line);
+    --gray-700: var(--p-muted);
+    --primary: var(--p-accent);
+    --primary-hover: var(--p-accent-hover);
+    --primary-light: var(--p-accent-subtle);
+}
+
+/* Dark Mode Tokens (Deep Obsidian Slate) */
+[data-theme="dark"] {
+    --p-bg: #090d16;
+    --p-surface: #101726;
+    --p-surface-card: #141c2c;
+    --p-ink: #f8fafc;
+    --p-ink-secondary: #cbd5e1;
+    --p-muted: #94a3b8;
+    --p-muted-light: #64748b;
+    --p-line: #1e293b;
+    --p-line-subtle: #172237;
+
+    --p-accent-subtle: rgba(255, 56, 92, 0.14);
+    --p-accent-subtle-hover: rgba(255, 56, 92, 0.22);
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 10px 26px -4px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 18px 42px -8px rgba(0, 0, 0, 0.65);
+    --shadow-accent: 0 6px 20px rgba(255, 56, 92, 0.4);
+
+    --card-bg: var(--p-surface-card);
+    --bg-color: var(--p-bg);
+    --text-color: var(--p-ink);
+    --border-color: var(--p-line);
+    --gray-100: var(--p-surface);
+    --gray-200: var(--p-line);
+    --gray-700: var(--p-muted);
+}
+
+/* --------------------------------------------------------------------------
+   2. BASE RESET & EQUAL EDGES (House Rule 4)
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+body {
+    font-family: var(--font-sans);
+    background-color: var(--p-bg);
+    color: var(--p-ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: background-color var(--dur-normal) var(--ease-standard),
+        color var(--dur-normal) var(--ease-standard);
+}
+
+/* Master Equal-Edge Container (Rule 4) */
+.taste-wrap {
+    width: 100%;
+    max-width: 1320px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: clamp(16px, 3vw, 32px);
+    padding-right: clamp(16px, 3vw, 32px);
+}
+
+/* Range input accent color */
+input[type=range] {
+    accent-color: var(--p-accent);
+}
+
+/* Accessible Skip Link */
+.skip-link {
+    position: absolute;
+    top: -60px;
+    left: 20px;
+    background: var(--p-ink);
+    color: var(--p-bg);
+    padding: 8px 16px;
+    border-radius: var(--r-btn);
+    font-weight: 600;
+    font-size: 0.85rem;
+    z-index: 9999;
+    text-decoration: none;
+    transition: top var(--dur-quick) var(--ease-standard);
+}
+
+.skip-link:focus {
+    top: 16px;
+    outline: 2px solid var(--p-accent);
+}
+
+/* --------------------------------------------------------------------------
+   3. TOP DEMO EVALUATION BAR
+   -------------------------------------------------------------------------- */
+.taste-demo-bar {
+    background: rgba(11, 15, 23, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #f1f5f9;
+    font-size: 0.78rem;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    position: relative;
+    z-index: 1030;
+}
+
+.taste-demo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--p-accent);
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 3px 10px;
+    border-radius: var(--r-full);
+}
+
+.taste-demo-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 3px 10px;
+    border-radius: var(--r-full);
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all var(--dur-quick) var(--ease-standard);
+}
+
+.taste-demo-pill:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.taste-demo-pill.active {
+    background: #ffffff;
+    color: #0b0f17;
+    font-weight: 700;
+    border-color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   4. NAVIGATION (Taste-Skill Fixed/Sticky Navbar)
+   -------------------------------------------------------------------------- */
+.navbar-taste {
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+    background-color: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--p-line);
+    padding: 12px 0;
+    transition: background-color var(--dur-normal) var(--ease-standard),
+        border-color var(--dur-normal) var(--ease-standard);
+}
+
+[data-theme="dark"] .navbar-taste {
+    background-color: rgba(9, 13, 22, 0.94);
+    border-bottom-color: var(--p-line);
+}
+
+.taste-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--p-accent) !important;
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: var(--tracking-tight);
+    transition: transform var(--dur-quick) var(--ease-standard), opacity var(--dur-quick) var(--ease-standard);
+}
+
+.taste-brand:hover {
+    transform: translateY(-1px);
+    opacity: 0.95;
+}
+
+.taste-brand-logo-mark {
+    width: 32px;
+    height: 32px;
+    background: var(--p-accent);
+    color: white;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 10px rgba(255, 56, 92, 0.35);
+}
+
+.nav-link-taste {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--p-ink-secondary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 8px 14px;
+    border-radius: var(--r-full);
+    text-decoration: none;
+    position: relative;
+    transition: all var(--dur-quick) var(--ease-standard);
+}
+
+.nav-link-taste:hover {
+    color: var(--p-accent);
+    background: var(--p-accent-subtle);
+    transform: translateY(-1px);
+}
+
+.nav-link-taste.active {
+    color: var(--p-accent);
+    background: var(--p-accent-subtle);
+    font-weight: 700;
+}
+
+/* Quick Tools (Currency, Theme, Notifications) */
+.taste-tool-btn {
+    background: var(--p-surface-card);
+    border: 1px solid var(--p-line);
+    color: var(--p-ink);
+    border-radius: var(--r-full);
+    padding: 6px 13px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all var(--dur-quick) var(--ease-standard);
+}
+
+.taste-tool-btn:hover {
+    background: var(--p-surface);
+    border-color: var(--p-muted-light);
+    color: var(--p-ink);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-xs);
+}
+
+.taste-tool-btn:active {
+    transform: translateY(1px) scale(0.98);
+}
+
+/* User Profile Capsule */
+.taste-user-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 6px 5px 14px;
+    border: 1.5px solid var(--p-line);
+    border-radius: var(--r-full);
+    background: var(--p-surface-card);
+    cursor: pointer;
+    transition: all var(--dur-quick) var(--ease-standard);
+}
+
+.taste-user-pill:hover {
+    border-color: var(--p-muted);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+}
+
+.taste-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--p-accent);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   5. BUTTONS & MICRO-INTERACTIONS (House Rule 5)
+   -------------------------------------------------------------------------- */
+.btn-airbnb {
+    background: linear-gradient(135deg, var(--p-accent) 0%, var(--p-accent-hover) 100%);
+    color: #ffffff !important;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--r-btn);
+    padding: 10px 22px;
+    font-size: 0.92rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(255, 56, 92, 0.28);
+    transition: transform var(--dur-quick) var(--ease-standard),
+        box-shadow var(--dur-quick) var(--ease-standard),
+        opacity var(--dur-quick) var(--ease-standard);
+}
+
+.btn-airbnb:hover {
+    opacity: 0.96;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-accent);
+}
+
+.btn-airbnb:active {
+    transform: translateY(1px) scale(0.985);
+}
+
+.btn-outline-taste {
+    background: var(--p-surface-card);
+    border: 1.5px solid var(--p-line);
+    color: var(--p-ink) !important;
+    font-weight: 600;
+    border-radius: var(--r-btn);
+    padding: 9px 20px;
+    font-size: 0.92rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all var(--dur-quick) var(--ease-standard);
+}
+
+.btn-outline-taste:hover {
+    background: var(--p-surface);
+    border-color: var(--p-ink);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-xs);
+}
+
+.btn-outline-taste:active {
+    transform: translateY(1px) scale(0.985);
+}
+
+.btn-secondary-taste {
+    background: var(--p-surface-card);
+    border: 1px solid var(--p-line);
+    color: var(--p-ink) !important;
+    font-weight: 600;
+    border-radius: var(--r-btn);
+    padding: 8px 16px;
+    font-size: 0.88rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all var(--dur-quick) var(--ease-standard);
+}
+
+.btn-secondary-taste:hover {
+    background: var(--p-surface);
+    border-color: var(--p-muted-light);
+    transform: translateY(-1px);
+}
+
+.btn-secondary-taste:active {
+    transform: translateY(1px) scale(0.985);
+}
+
+/* --------------------------------------------------------------------------
+   6. AIRBNB-GRADE SEARCH & CATEGORY LAYOUT (Catalog.cshtml)
+   -------------------------------------------------------------------------- */
+.taste-catalog-header {
+    margin-bottom: 20px;
+}
+
+
+.taste-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--p-accent-subtle);
+    border: 1px solid rgba(255, 56, 92, 0.2);
+    color: var(--p-accent);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 4px 14px;
+    border-radius: var(--r-full);
+}
+
+.taste-hero-title {
+    font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+    font-weight: 800;
+    letter-spacing: var(--tracking-tight);
+    line-height: 1.18;
+    margin-bottom: 6px;
+    color: var(--p-ink);
+}
+
+.taste-hero-subtitle {
+    color: var(--p-muted);
+    font-size: 0.96rem;
+    max-width: 680px;
+    line-height: 1.5;
+}
+
+/* Authentic Capsule Search Bar */
+.airbnb-search-bar {
+    background: var(--p-surface-card);
+    border: 1px solid var(--p-line);
+    border-radius: var(--r-full);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
+    padding: 6px 10px 6px 20px;
+    display: flex;
+    align-items: center;
+    transition: box-shadow var(--dur-normal) var(--ease-standard),
+                border-color var(--dur-normal) var(--ease-standard);
+    margin-bottom: 16px;
+}
+.airbnb-search-bar:focus-within {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    border-color: var(--p-accent);
+}
+.airbnb-search-segment {
+    flex: 1;
+    padding: 4px 14px;
+    border-right: 1px solid var(--p-line);
+    min-width: 0;
+}
+
+.airbnb-search-segment:last-of-type {
+    border-right: none;
+}
+
+@media (max-width: 991px) {
+    .airbnb-search-bar {
+        border-radius: var(--r-xl);
+        padding: 16px;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .airbnb-search-segment {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--p-line);
+        padding: 6px 2px;
+    }
+    .airbnb-search-segment:last-of-type {
+        border-bottom: none;
+    }
+}
+
+.taste-search-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--p-ink-secondary);
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.taste-search-input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--p-ink);
+    font-size: 0.92rem;
+    font-weight: 600;
+    padding: 2px 0;
+}
+
+.taste-search-input::placeholder {
+    color: var(--p-muted);
+    font-weight: 400;
+}
+
+/* Category Lifestyle Bar */
+.taste-category-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 6px 0 14px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--p-line);
+}
+.taste-category-bar::-webkit-scrollbar {
+    display: none;
+}
+.taste-category-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 14px;
+    border-radius: var(--r-md);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    color: var(--p-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-bottom: 2px solid transparent;
+    transition: all var(--dur-quick) var(--ease-standard);
+    text-decoration: none;
+}
+.taste-category-item i {
+    font-size: 1.35rem;
+    color: var(--p-muted);
+    transition: color var(--dur-quick) var(--ease-standard);
+}
+.taste-category-item:hover {
+    color: var(--p-ink);
+    border-bottom-color: var(--p-muted-light);
+}
+.taste-category-item:hover i {
+    color: var(--p-ink);
+}
+.taste-category-item.active {
+    color: var(--p-ink);
+    border-bottom-color: var(--p-ink);
+    font-weight: 700;
+}
+.taste-category-item.active i {
+    color: var(--p-accent);
+}
+
+/* Destination Chips */
+.taste-area-chip {
+    background: var(--p-surface);
+    color: var(--p-ink);
+    border: 1px solid var(--p-line);
+    padding: 6px 14px;
+    border-radius: var(--r-full);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    transition: all var(--dur-quick) var(--ease-standard);
+}
+
+.taste-area-chip:hover,
+.taste-area-chip.active {
+    background: var(--p-accent-subtle);
+    color: var(--p-accent);
+    border-color: var(--p-accent);
+    transform: translateY(-1px);
+}
+
+/* Floating Map Pill Button (Signature Airbnb) */
+.taste-floating-map-btn {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: #0f172a;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--r-full);
+    padding: 12px 22px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+    cursor: pointer;
+    transition: transform var(--dur-quick) var(--ease-standard),
+                background-color var(--dur-quick) var(--ease-standard),
+                box-shadow var(--dur-quick) var(--ease-standard);
+}
+.taste-floating-map-btn:hover {
+    background: #000000;
+    color: #ffffff;
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
+}
+.taste-floating-map-btn:active {
+    transform: translateX(-50%) scale(0.96);
+}
+[data-theme="dark"] .taste-floating-map-btn {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Filter Drawer */
+.taste-filter-drawer {
+    background: var(--p-surface-card);
+    border: 1px solid var(--p-line);
+    border-radius: var(--r-xl);
+    padding: 18px 22px;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 20px;
+}
+
+.taste-amenity-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--p-surface);
+    border: 1px solid var(--p-line);
+    color: var(--p-ink-secondary);
+    padding: 6px 12px;
+    border-radius: var(--r-sm);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    transition: all var(--dur-quick) var(--ease-standard);
+}
+
+.taste-amenity-chip:hover {
+    border-color: var(--p-accent);
+    color: var(--p-accent);
+}
+
+/* --------------------------------------------------------------------------
+   7. PROPERTY CARDS & PHOTO MASK (House Rule 5)
+   -------------------------------------------------------------------------- */
+.card-custom {
+    background: var(--p-surface-card);
+    border: 1px solid var(--p-line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    transition: transform var(--dur-normal) var(--ease-standard),
+        box-shadow var(--dur-normal) var(--ease-standard),
+        border-color var(--dur-normal) var(--ease-standard);
+}
+
+.card-custom:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--p-muted-light);
+}
+
+/* Photo Overflow Mask & Smooth 1.03 Zoom */
+.taste-photo-frame {
+    aspect-ratio: 16 / 10;
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+    background: var(--p-surface);
+}
+
+.taste-photo-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--dur-smooth) var(--ease-standard);
+}
+
+.card-custom:hover .taste-photo-frame img {
+    transform: scale(1.03);
+}
+
+/* Wishlist Heart Micro-Interaction */
+.taste-wishlist-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 10;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(6px);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: transform var(--dur-quick) var(--ease-standard),
+        background-color var(--dur-quick) var(--ease-standard);
+}
+
+[data-theme="dark"] .taste-wishlist-btn {
+    background: rgba(19, 27, 44, 0.9);
+}
+
+.taste-wishlist-btn:hover {
+    transform: scale(1.12);
+}
+
+.taste-wishlist-btn:active {
+    transform: scale(0.95);
+}
+
+/* Floating Type Badge */
+.taste-type-badge {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background: rgba(11, 15, 23, 0.75);
+    backdrop-filter: blur(6px);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: var(--r-full);
+}
+
+/* --------------------------------------------------------------------------
+   8. LEAFLET MAP & CUSTOM PRICE MARKERS
+   -------------------------------------------------------------------------- */
+#mapContainer {
+    height: 380px;
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    border: 1px solid var(--p-line);
+    margin-bottom: 28px;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    z-index: 1;
+}
+
+.custom-price-pin {
+    background: #ffffff;
+    color: #0f172a;
+    font-weight: 800;
+    font-size: 0.82rem;
+    padding: 5px 11px;
+    border-radius: var(--r-full);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all var(--dur-quick) var(--ease-standard);
+}
+
+.custom-price-pin:hover {
+    background: var(--p-accent);
+    color: #ffffff;
+    transform: scale(1.12);
+    box-shadow: 0 6px 16px rgba(255, 56, 92, 0.4);
+}
+
+[data-theme="dark"] .custom-price-pin {
+    background: #1e293b;
+    color: #f8fafc;
+    border-color: #334155;
+}
+
+/* --------------------------------------------------------------------------
+   9. FOOTER (House Rule 1: Clean footer credits line)
+   -------------------------------------------------------------------------- */
+.taste-footer {
+    margin-top: auto;
+    background: var(--p-surface-card);
+    border-top: 1px solid var(--p-line);
+    padding: 48px 0 28px;
+    color: var(--p-muted);
+    font-size: 0.88rem;
+    transition: background-color var(--dur-normal) var(--ease-standard);
+}
+
+.taste-footer-title {
+    color: var(--p-ink);
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 14px;
+}
+
+.taste-footer-link {
+    color: var(--p-muted);
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 8px;
+    font-size: 0.88rem;
+    transition: color var(--dur-quick) var(--ease-standard);
+}
+
+.taste-footer-link:hover {
+    color: var(--p-accent);
+}
+
+.taste-footer-bottom {
+    border-top: 1px solid var(--p-line);
+    padding-top: 20px;
+    margin-top: 36px;
+    font-size: 0.82rem;
+}
+
+/* --------------------------------------------------------------------------
+   10. ALERTS & NOTIFICATIONS
+   -------------------------------------------------------------------------- */
+.taste-alert {
+    border-radius: var(--r-md);
+    border: 1px solid transparent;
+    padding: 14px 18px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--shadow-xs);
+    margin-bottom: 16px;
+}
+
+.taste-alert-success {
+    background: var(--p-success-subtle);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: #065f46;
+}
+
+.taste-alert-danger {
+    background: var(--p-danger-subtle);
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #991b1b;
+}
+
+.taste-alert-info {
+    background: var(--p-info-subtle);
+    border-color: rgba(2, 132, 199, 0.25);
+    color: #075985;
+}
+
+.taste-alert-warning {
+    background: var(--p-warning-subtle);
+    border-color: rgba(245, 158, 11, 0.25);
+    color: #92400e;
+}
+
+[data-theme="dark"] .taste-alert-success {
+    background: rgba(16, 185, 129, 0.12);
+    color: #6ee7b7;
+}
+
+[data-theme="dark"] .taste-alert-danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: #fca5a5;
+}
+
+[data-theme="dark"] .taste-alert-info {
+    background: rgba(2, 132, 199, 0.12);
+    color: #7dd3fc;
+}
+
+[data-theme="dark"] .taste-alert-warning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fde68a;
+}

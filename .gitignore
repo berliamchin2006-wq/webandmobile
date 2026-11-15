@@ -49,3 +49,13 @@ Thumbs.db
 App_Data/
 *.mdf
 *.ldf
+
+## Agent artifacts, testing tools & dependencies
+.taste-skill/
+.agents/
+shots/
+playwright-shots/
+playwright-inspect.mjs
+node_modules/
+package.json
+package-lock.json

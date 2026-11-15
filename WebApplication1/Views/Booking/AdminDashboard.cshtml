@@ -11,21 +11,24 @@
     var recentDisputes = ViewBag.RecentDisputes as List<HomeNest.Models.MaintenanceTicket> ?? new List<HomeNest.Models.MaintenanceTicket>();
 }
 
-<div class="container py-4">
+<div class="taste-wrap py-4">
     
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
         <div>
-            <span class="badge bg-danger rounded-pill px-3 py-1 mb-1">Module 7.2: Admin Platform Reporting</span>
-            <h2 class="fw-bold mb-0">Platform Executive Dashboard</h2>
+            <span class="badge bg-danger-subtle text-danger-emphasis rounded-pill px-3 py-1 mb-2 font-monospace" style="font-size:0.75rem;">
+                <i class="bi bi-shield-lock-fill me-1"></i> Platform Governance
+            </span>
+            <h2 class="fw-bold mb-1 text-dark-emphasis" style="letter-spacing: var(--tracking-tight);">Platform Executive Dashboard</h2>
+            <p class="text-muted small mb-0">System-wide transaction volume, commission revenues, and identity oversight</p>
         </div>
-        <div class="d-flex gap-2 mt-3 mt-md-0">
-            <a asp-action="ExportFinancialCsv" class="btn btn-outline-success rounded-pill px-3">
-                <i class="bi bi-file-earmark-excel me-1"></i> Export Financial CSV Report
+        <div class="d-flex gap-2">
+            <a asp-action="ExportFinancialCsv" class="btn btn-outline-taste rounded-pill px-3">
+                <i class="bi bi-file-earmark-excel me-1 text-success"></i> Export CSV
             </a>
-            <a asp-controller="Account" asp-action="AuditLogs" class="btn btn-outline-dark rounded-pill px-3">
-                <i class="bi bi-journal-text me-1"></i> Audit Trail
+            <a asp-controller="Account" asp-action="AuditLogs" class="btn btn-outline-taste rounded-pill px-3">
+                <i class="bi bi-journal-text me-1 text-primary"></i> Audit Trail
             </a>
-            <a asp-controller="Account" asp-action="Users" class="btn btn-danger rounded-pill px-4">
+            <a asp-controller="Account" asp-action="Users" class="btn btn-airbnb rounded-pill px-4">
                 <i class="bi bi-people me-1"></i> User Management
             </a>
         </div>
@@ -34,15 +37,15 @@
     <!-- PENDING HOST VERIFICATION ALERT -->
     @if (pendingHostVerifications > 0)
     {
-        <div class="alert alert-warning border-warning shadow-sm rounded-4 d-flex justify-content-between align-items-center mb-4">
+        <div class="taste-alert taste-alert-warning d-flex justify-content-between align-items-center mb-4">
             <div class="d-flex align-items-center gap-3">
-                <i class="bi bi-shield-exclamation fs-3 text-warning"></i>
+                <i class="bi bi-shield-exclamation fs-3"></i>
                 <div>
                     <h6 class="fw-bold mb-0">@pendingHostVerifications Host Identity Verification Request(s) Pending</h6>
-                    <small class="text-muted">Review submitted Malaysian IC / Passport documents to approve host accounts.</small>
+                    <small>Review submitted Malaysian IC / Passport documents to approve host accounts.</small>
                 </div>
             </div>
-            <a asp-controller="Account" asp-action="Users" class="btn btn-sm btn-dark rounded-pill px-3">
+            <a asp-controller="Account" asp-action="Users" class="btn btn-sm btn-outline-taste rounded-pill px-3">
                 Review Queue
             </a>
         </div>
@@ -51,71 +54,71 @@
     <!-- PLATFORM KPI METRICS -->
     <div class="row g-3 mb-4">
         <div class="col-6 col-lg-3">
-            <div class="card border rounded-4 p-3 shadow-sm bg-white">
-                <span class="text-muted small text-uppercase fw-bold">Platform GMV Volume</span>
-                <h3 class="fw-bold text-dark mt-1 mb-0" data-base-price="@platformGmv">RM @platformGmv.ToString("N2")</h3>
+            <div class="card-custom p-4">
+                <span class="text-muted small text-uppercase fw-bold" style="letter-spacing:0.04em;">Platform GMV Volume</span>
+                <h3 class="fw-bold text-dark-emphasis mt-2 mb-1" data-base-price="@platformGmv">RM @platformGmv.ToString("N2")</h3>
                 <small class="text-muted">Total processed transactions</small>
             </div>
         </div>
         <div class="col-6 col-lg-3">
-            <div class="card border rounded-4 p-3 shadow-sm bg-white">
-                <span class="text-muted small text-uppercase fw-bold">Platform Revenue</span>
-                <h3 class="fw-bold text-success mt-1 mb-0" data-base-price="@commissionRevenue">RM @commissionRevenue.ToString("N2")</h3>
+            <div class="card-custom p-4">
+                <span class="text-muted small text-uppercase fw-bold" style="letter-spacing:0.04em;">Platform Revenue</span>
+                <h3 class="fw-bold text-success mt-2 mb-1" data-base-price="@commissionRevenue">RM @commissionRevenue.ToString("N2")</h3>
                 <small class="text-muted">Retained platform commission</small>
             </div>
         </div>
         <div class="col-6 col-lg-3">
-            <div class="card border rounded-4 p-3 shadow-sm bg-white">
-                <span class="text-muted small text-uppercase fw-bold">Registered Users</span>
-                <h3 class="fw-bold text-primary mt-1 mb-0">@totalUsers users</h3>
+            <div class="card-custom p-4">
+                <span class="text-muted small text-uppercase fw-bold" style="letter-spacing:0.04em;">Registered Users</span>
+                <h3 class="fw-bold text-primary mt-2 mb-1">@totalUsers users</h3>
                 <small class="text-muted">@totalGuests Guests · @totalHosts Hosts</small>
             </div>
         </div>
         <div class="col-6 col-lg-3">
-            <div class="card border rounded-4 p-3 shadow-sm bg-white">
-                <span class="text-muted small text-uppercase fw-bold">Active Listings</span>
-                <h3 class="fw-bold text-danger mt-1 mb-0">@activeListings listings</h3>
+            <div class="card-custom p-4">
+                <span class="text-muted small text-uppercase fw-bold" style="letter-spacing:0.04em;">Active Listings</span>
+                <h3 class="fw-bold text-danger mt-2 mb-1">@activeListings listings</h3>
                 <small class="text-muted">Available for booking</small>
             </div>
         </div>
     </div>
 
     <!-- RECENT PLATFORM TRANSACTIONS & BOOKINGS -->
-    <div class="card border rounded-4 shadow-sm mb-4 bg-white overflow-hidden">
-        <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
-            <h5 class="fw-bold mb-0">Recent Platform Bookings & Financial Activity</h5>
-            <span class="badge bg-light text-dark border">Live Stream</span>
+    <div class="card-custom overflow-hidden mb-4">
+        <div class="p-3 border-bottom d-flex justify-content-between align-items-center" style="border-color: var(--p-line) !important; background: var(--p-surface);">
+            <h5 class="fw-bold mb-0 text-dark-emphasis">Recent Platform Bookings & Financial Activity</h5>
+            <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill">Live Stream</span>
         </div>
 
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+                <thead style="background: var(--p-surface); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--p-muted);">
                     <tr>
-                        <th>Booking #</th>
+                        <th class="ps-4">Booking #</th>
                         <th>Listing</th>
                         <th>Guest</th>
                         <th>Check-In</th>
                         <th>Total Paid</th>
                         <th>Status</th>
-                        <th class="text-end">Manage</th>
+                        <th class="pe-4 text-end">Manage</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody style="font-size:0.88rem;">
                     @foreach (var b in Model)
                     {
                         <tr>
-                            <td><strong>#@b.Id</strong></td>
-                            <td>@b.Property.Title</td>
+                            <td class="ps-4 font-monospace fw-bold text-dark-emphasis">#@b.Id</td>
+                            <td><strong class="text-dark-emphasis">@b.Property.Title</strong></td>
                             <td>@b.Guest.FullName</td>
-                            <td>@b.CheckInDate.ToString("dd MMM yyyy")</td>
+                            <td class="text-muted">@b.CheckInDate.ToString("dd MMM yyyy")</td>
                             <td><strong class="text-danger" data-base-price="@b.TotalAmount">RM @b.TotalAmount.ToString("N2")</strong></td>
                             <td>
-                                <span class="badge @(b.Status == "Confirmed" ? "bg-primary" : (b.Status == "CheckedIn" ? "bg-success" : (b.Status == "Cancelled" ? "bg-danger" : "bg-secondary"))) rounded-pill px-3 py-1">
+                                <span class="badge @(b.Status == "Confirmed" ? "bg-primary-subtle text-primary border border-primary-subtle" : (b.Status == "CheckedIn" ? "bg-success-subtle text-success border border-success-subtle" : (b.Status == "Cancelled" ? "bg-danger-subtle text-danger border border-danger-subtle" : "bg-secondary-subtle text-secondary"))) rounded-pill px-3 py-1">
                                     @b.Status
                                 </span>
                             </td>
-                            <td class="text-end">
-                                <a asp-action="Details" asp-route-id="@b.Id" class="btn btn-sm btn-outline-dark rounded-pill px-3">
+                            <td class="pe-4 text-end">
+                                <a asp-action="Details" asp-route-id="@b.Id" class="btn btn-sm btn-outline-taste rounded-pill px-3">
                                     View
                                 </a>
                             </td>
@@ -127,25 +130,25 @@
     </div>
 
     <!-- RECENT DISPUTES & MAINTENANCE TICKETS -->
-    <div class="card border rounded-4 shadow-sm bg-white overflow-hidden">
-        <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
-            <h5 class="fw-bold mb-0">Dispute & In-Stay Issue Management Log</h5>
-            <a asp-action="Maintenance" class="btn btn-sm btn-outline-secondary rounded-pill px-3">View All Tickets</a>
+    <div class="card-custom overflow-hidden">
+        <div class="p-3 border-bottom d-flex justify-content-between align-items-center" style="border-color: var(--p-line) !important; background: var(--p-surface);">
+            <h5 class="fw-bold mb-0 text-dark-emphasis">Dispute & In-Stay Issue Management Log</h5>
+            <a asp-action="Maintenance" class="btn btn-sm btn-outline-taste rounded-pill px-3">View All Tickets</a>
         </div>
 
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+                <thead style="background: var(--p-surface); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--p-muted);">
                     <tr>
-                        <th>Ticket #</th>
+                        <th class="ps-4">Ticket #</th>
                         <th>Property</th>
                         <th>Category</th>
                         <th>Issue Summary</th>
                         <th>Priority</th>
-                        <th>Status</th>
+                        <th class="pe-4">Status</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody style="font-size:0.88rem;">
                     @if (!recentDisputes.Any())
                     {
                         <tr><td colspan="6" class="text-center text-muted py-4">No active disputes or unresolved issues.</td></tr>
@@ -155,12 +158,12 @@
                         @foreach (var d in recentDisputes)
                         {
                             <tr>
-                                <td>#@d.Id</td>
+                                <td class="ps-4 font-monospace fw-bold text-dark-emphasis">#@d.Id</td>
                                 <td>@d.Booking?.Property?.Title</td>
                                 <td>@d.Category</td>
                                 <td>@d.IssueTitle</td>
-                                <td><span class="badge @(d.Priority == "Urgent" ? "bg-danger" : "bg-warning text-dark") rounded-pill">@d.Priority</span></td>
-                                <td><span class="badge bg-secondary rounded-pill">@d.Status</span></td>
+                                <td><span class="badge @(d.Priority == "Urgent" ? "bg-danger-subtle text-danger border border-danger-subtle" : "bg-warning-subtle text-warning-emphasis border border-warning-subtle") rounded-pill px-3">@d.Priority</span></td>
+                                <td class="pe-4"><span class="badge bg-secondary-subtle text-secondary rounded-pill px-3">@d.Status</span></td>
                             </tr>
                         }
                     }
@@ -170,4 +173,3 @@
     </div>
 
 </div>
-
