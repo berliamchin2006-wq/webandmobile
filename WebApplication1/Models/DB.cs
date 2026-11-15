@@ -49,7 +49,7 @@ namespace HomeNest.Models
         public string ProfilePhoto { get; set; } = "default.png";
 
         // Email Verification
-        public bool IsEmailVerified { get; set; } = false;
+        public bool IsEmailVerified { get; set; } = true;
 
         [MaxLength(100)]
         public string? EmailVerificationToken { get; set; }

@@ -204,7 +204,7 @@ namespace HomeNest.Controllers
                 FullName = vm.FullName.Trim(),
                 PhoneNumber = vm.PhoneNumber.Trim(),
                 Role = vm.Role,
-                IsEmailVerified = false,
+                IsEmailVerified = true,
                 EmailVerificationToken = token,
                 CreatedAt = DateTime.Now
             };
@@ -516,6 +516,38 @@ namespace HomeNest.Controllers
                 .ToList();
 
             return View(users);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult DeleteUser(int userId)
+        {
+            var user = _db.Users
+                .Include(u => u.HostedProperties)
+                .Include(u => u.Bookings)
+                .FirstOrDefault(u => u.Id == userId);
+
+            if (user == null) return NotFound();
+
+            if (user.Role == "Admin" && user.Id == 1)
+            {
+                TempData["ErrorMessage"] = "The primary System Administrator account cannot be deleted.";
+                return RedirectToAction("Users");
+            }
+
+            var auditLogs = _db.AuditLogs.Where(a => a.UserId == userId).ToList();
+            foreach (var log in auditLogs) log.UserId = null;
+
+            _db.Users.Remove(user);
+            _db.SaveChanges();
+
+            int adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            string adminEmail = User.Identity?.Name ?? "Admin";
+            _helper.LogAudit(_db, adminId, adminEmail, "UserDeleted", $"Admin deleted user #{userId} ({user.FullName} - {user.Email}).");
+
+            TempData["SuccessMessage"] = $"User {user.FullName} (#{userId}) has been deleted successfully.";
+            return RedirectToAction("Users");
         }
 
         // ==========================================
