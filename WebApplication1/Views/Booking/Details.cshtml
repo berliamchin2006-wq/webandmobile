@@ -1,0 +1,325 @@
+@model HomeNest.Models.Booking
+@using System.Security.Claims
+@{
+    ViewData["Title"] = "Reservation Details #" + Model.Id;
+    var p = Model.Property;
+    int currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    bool isHost = p.HostId == currentUserId;
+    bool isGuest = Model.GuestId == currentUserId;
+    bool isAdmin = User.IsInRole("Admin");
+
+    var cover = p.Photos.FirstOrDefault(ph => ph.IsCover)?.FileName 
+        ?? p.Photos.FirstOrDefault()?.FileName 
+        ?? "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80";
+}
+
+@section Styles {
+    <style>
+        .chat-bubble {
+            max-width: 75%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            margin-bottom: 12px;
+            font-size: 0.92rem;
+            line-height: 1.4;
+        }
+        .chat-bubble-me {
+            background: #ff385c;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .chat-bubble-other {
+            background: #f1f5f9;
+            color: #1e293b;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+
+        .status-timeline-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            display: inline-block;
+        }
+        .status-timeline-dot.active {
+            background: #10b981;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+        }
+    </style>
+}
+
+<div class="container py-4" style="max-width: 1000px;">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-danger bg-opacity-75 rounded-pill px-3 py-1 mb-1">Reservation #@Model.Id</span>
+            <h2 class="fw-bold mb-0">Booking Details & Stay Hub</h2>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="MyBookings" class="btn btn-outline-secondary rounded-pill px-3">
+                <i class="bi bi-arrow-left"></i> My Trips
+            </a>
+            <a asp-action="Receipt" asp-route-id="@Model.Id" class="btn btn-outline-dark rounded-pill px-3">
+                <i class="bi bi-receipt"></i> Tax Invoice
+            </a>
+        </div>
+    </div>
+
+    <!-- STAY STATUS TIMELINE & HOST ACTION CONTROLS -->
+    <div class="card border rounded-4 p-4 shadow-sm mb-4 bg-white">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <div>
+                <span class="text-muted small text-uppercase fw-bold">Current Stay Status:</span>
+                <h4 class="fw-bold mb-0 text-dark">
+                    <span class="badge @(Model.Status == "CheckedIn" ? "bg-success" : (Model.Status == "Cancelled" ? "bg-danger" : "bg-primary")) rounded-pill px-3 py-1">
+                        @Model.Status
+                    </span>
+                </h4>
+            </div>
+
+            <!-- Host State Machine Actions -->
+            @if (isHost || isAdmin)
+            {
+                <div class="d-flex gap-2 mt-2 mt-md-0">
+                    @if (Model.Status == "Confirmed")
+                    {
+                        <form asp-action="UpdateStayStatus" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="status" value="CheckedIn" />
+                            <button type="submit" class="btn btn-success rounded-pill px-3 btn-sm fw-bold">
+                                <i class="bi bi-box-arrow-in-right"></i> Check In Guest
+                            </button>
+                        </form>
+                    }
+                    @if (Model.Status == "CheckedIn")
+                    {
+                        <form asp-action="UpdateStayStatus" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="status" value="CheckedOut" />
+                            <button type="submit" class="btn btn-dark rounded-pill px-3 btn-sm fw-bold">
+                                <i class="bi bi-box-arrow-right"></i> Complete Check-Out
+                            </button>
+                        </form>
+                    }
+                </div>
+            }
+
+            <!-- Guest Cancel Button -->
+            @if (isGuest && Model.Status == "Confirmed")
+            {
+                <form asp-action="CancelBooking" method="post" onsubmit="return confirm('Are you sure you want to cancel this booking? Automated refund will be calculated based on the @p.CancellationPolicy policy.');">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button type="submit" class="btn btn-outline-danger rounded-pill px-3 btn-sm">
+                        <i class="bi bi-x-circle"></i> Cancel Reservation
+                    </button>
+                </form>
+            }
+        </div>
+
+        <!-- Timeline steps -->
+        <div class="d-flex justify-content-between align-items-center position-relative pt-2">
+            <div class="text-center">
+                <span class="status-timeline-dot active"></span>
+                <small class="d-block fw-bold mt-1">Confirmed</small>
+                <span class="text-muted" style="font-size:0.72rem;">@Model.BookingDate.ToString("dd MMM")</span>
+            </div>
+            <div class="text-center">
+                <span class="status-timeline-dot @(Model.Status == "CheckedIn" || Model.Status == "CheckedOut" ? "active" : "")"></span>
+                <small class="d-block fw-bold mt-1">Checked-In</small>
+                <span class="text-muted" style="font-size:0.72rem;">@(Model.CheckedInAt?.ToString("dd MMM, hh:mm tt") ?? Model.CheckInDate.ToString("dd MMM"))</span>
+            </div>
+            <div class="text-center">
+                <span class="status-timeline-dot @(Model.Status == "CheckedOut" ? "active" : "")"></span>
+                <small class="d-block fw-bold mt-1">Checked-Out</small>
+                <span class="text-muted" style="font-size:0.72rem;">@(Model.CheckedOutAt?.ToString("dd MMM, hh:mm tt") ?? Model.CheckOutDate.ToString("dd MMM"))</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        
+        <!-- LEFT COLUMN: PROPERTY & TRIP SUMMARY -->
+        <div class="col-12 col-md-5">
+            <div class="card border rounded-4 p-3 shadow-sm mb-4">
+                <img src="@cover" class="w-100 rounded-3 mb-3" style="height:170px; object-fit:cover;" />
+                <h5 class="fw-bold mb-1">@p.Title</h5>
+                <p class="text-muted small mb-3"><i class="bi bi-geo-alt"></i> @p.Address, @p.City, @p.State</p>
+
+                <div class="p-3 bg-light rounded-3 mb-3" style="font-size:0.85rem;">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Check-In:</span>
+                        <strong>@Model.CheckInDate.ToString("dd MMM yyyy") (3 PM)</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Check-Out:</span>
+                        <strong>@Model.CheckOutDate.ToString("dd MMM yyyy") (11 AM)</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Stay:</span>
+                        <span>@Model.TotalNights nights · @Model.GuestCount guests</span>
+                    </div>
+                    <div class="d-flex justify-content-between pt-2 border-top">
+                        <span class="text-muted">Total Paid:</span>
+                        <strong class="text-danger" data-base-price="@Model.TotalAmount">RM @Model.TotalAmount.ToString("N2")</strong>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <a asp-action="CheckInPass" asp-route-id="@Model.Id" class="btn btn-outline-danger rounded-pill flex-fill btn-sm">
+                        <i class="bi bi-qr-code"></i> Digital Pass
+                    </a>
+                    <a asp-action="ReportIssue" asp-route-bookingId="@Model.Id" class="btn btn-outline-secondary rounded-pill flex-fill btn-sm">
+                        <i class="bi bi-tools"></i> Report Defect
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: REAL-TIME MESSAGING THREAD -->
+        <div class="col-12 col-md-7">
+            <div class="card border rounded-4 shadow-sm h-100 d-flex flex-column justify-content-between overflow-hidden">
+                
+                <!-- Chat Header -->
+                <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-chat-left-text-fill text-danger fs-5"></i>
+                        <div>
+                            <h6 class="fw-bold mb-0">Host–Guest Communication</h6>
+                            <small class="text-muted">Chat with @(isHost ? Model.Guest.FullName : p.Host.FullName)</small>
+                        </div>
+                    </div>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">
+                        <i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Active Thread
+                    </span>
+                </div>
+
+                <!-- Chat Messages Scroll Container -->
+                <div class="p-4 flex-grow-1 overflow-auto" style="max-height: 380px; min-height: 250px;">
+                    @if (!Model.Messages.Any())
+                    {
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-chat-square-dots fs-1 mb-2"></i>
+                            <p class="mb-0">No messages yet. Send a greeting to begin!</p>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var m in Model.Messages)
+                        {
+                            bool isMe = m.SenderId == currentUserId;
+                            <div class="chat-bubble @(isMe ? "chat-bubble-me" : "chat-bubble-other")">
+                                <span class="d-block fw-bold small opacity-75 mb-1">
+                                    @(isMe ? "You" : m.Sender.FullName)
+                                </span>
+                                <div>@m.MessageText</div>
+                                <span class="d-block text-end opacity-50 mt-1" style="font-size:0.7rem;">
+                                    @m.SentAt.ToString("hh:mm tt, dd MMM")
+                                </span>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <!-- Chat Send Form -->
+                <div class="p-3 border-top bg-light">
+                    <form asp-action="SendMessage" method="post" class="d-flex gap-2">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="bookingId" value="@Model.Id" />
+                        <input type="text" name="messageText" class="form-control rounded-pill px-3" placeholder="Type a message to your host/guest..." required autocomplete="off" />
+                        <button type="submit" class="btn btn-airbnb rounded-circle d-flex align-items-center justify-content-center p-2" style="width:42px; height:42px;">
+                            <i class="bi bi-send-fill"></i>
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- POST-STAY MUTUAL REVIEW SECTION (MODULE 6) -->
+    @if (isGuest && (Model.Status == "CheckedOut" || Model.Status == "CheckedIn" || Model.CheckInDate < DateTime.Today))
+    {
+        <div class="card border rounded-4 p-4 shadow-sm mt-4 bg-white" id="review">
+            <h5 class="fw-bold mb-3"><i class="bi bi-star-fill text-warning me-2"></i> Leave a Stay Review & Rating</h5>
+
+            @if (Model.Review != null)
+            {
+                <div class="p-3 bg-light rounded-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="badge bg-success rounded-pill px-3 py-1">Review Submitted</span>
+                        <strong class="text-warning"><i class="bi bi-star-fill"></i> @Model.Review.OverallRating.ToString("0.0")★</strong>
+                    </div>
+                    <p class="mb-2 text-dark">"@Model.Review.Comment"</p>
+                    @if (!string.IsNullOrEmpty(Model.Review.HostReply))
+                    {
+                        <div class="p-2 border-start border-3 border-danger bg-white rounded">
+                            <strong>Host Reply:</strong> @Model.Review.HostReply
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <form asp-action="SubmitReview" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="BookingId" value="@Model.Id" />
+                    <input type="hidden" name="PropertyId" value="@Model.PropertyId" />
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label fw-semibold small">Cleanliness (1-5)</label>
+                            <select name="CleanlinessRating" class="form-select form-select-sm">
+                                <option value="5">5 ★★★★★ Excellent</option>
+                                <option value="4">4 ★★★★☆ Good</option>
+                                <option value="3">3 ★★★☆☆ Average</option>
+                                <option value="2">2 ★★☆☆☆ Poor</option>
+                                <option value="1">1 ★☆☆☆☆ Terrible</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label fw-semibold small">Accuracy (1-5)</label>
+                            <select name="AccuracyRating" class="form-select form-select-sm">
+                                <option value="5">5 ★★★★★ Exact match</option>
+                                <option value="4">4 ★★★★☆ Minor differences</option>
+                                <option value="3">3 ★★★☆☆ Somewhat accurate</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label fw-semibold small">Communication (1-5)</label>
+                            <select name="CommunicationRating" class="form-select form-select-sm">
+                                <option value="5">5 ★★★★★ Very responsive</option>
+                                <option value="4">4 ★★★★☆ Good</option>
+                                <option value="3">3 ★★★☆☆ Slow response</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label fw-semibold small">Location (1-5)</label>
+                            <select name="LocationRating" class="form-select form-select-sm">
+                                <option value="5">5 ★★★★★ Great spot</option>
+                                <option value="4">4 ★★★★☆ Good location</option>
+                                <option value="3">3 ★★★☆☆ Far from amenities</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Your Review & Feedback *</label>
+                        <textarea name="Comment" rows="3" class="form-control" placeholder="Share your experience staying here. (Profanity filtering is automatically enforced)..." required minlength="10"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-airbnb rounded-pill px-4 fw-bold">
+                        Submit Verified Review
+                    </button>
+                </form>
+            }
+        </div>
+    }
+
+</div>
+

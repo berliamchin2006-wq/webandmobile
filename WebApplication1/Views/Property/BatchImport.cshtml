@@ -1,0 +1,106 @@
+@model HomeNest.Models.BatchPricingImportVM
+@{
+    ViewData["Title"] = "Batch Import Pricing & Availability via CSV";
+    var errorList = ViewBag.ErrorList as List<string>;
+}
+
+<div class="container py-4" style="max-width: 800px;">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-success bg-opacity-75 rounded-pill px-3 py-1 mb-1">[Additional Feature] Batch CSV Pricing Update</span>
+            <h2 class="fw-bold mb-0">Batch Import / Update Pricing</h2>
+        </div>
+        <a asp-action="MyProperties" class="btn btn-outline-secondary rounded-pill px-3">
+            <i class="bi bi-arrow-left"></i> My Listings
+        </a>
+    </div>
+
+    @if (ViewBag.UpdatedCount != null)
+    {
+        <div class="alert alert-success shadow-sm rounded-4 mb-4">
+            <h5 class="fw-bold"><i class="bi bi-check-circle-fill me-2"></i> Import Completed Successfully!</h5>
+            <p class="mb-0"><strong>@ViewBag.UpdatedCount</strong> listing(s) had their nightly rates, cleaning fees, weekend pricing, and availability updated.</p>
+        </div>
+    }
+
+    @if (errorList != null && errorList.Any())
+    {
+        <div class="alert alert-warning shadow-sm rounded-4 mb-4">
+            <h6 class="fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> Notice during import:</h6>
+            <ul class="mb-0 small">
+                @foreach (var err in errorList)
+                {
+                    <li>@err</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="card border rounded-4 p-4 shadow-sm mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-upload text-primary me-2"></i> Upload Pricing CSV File</h5>
+        
+        <form asp-action="BatchImport" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Select CSV File (*.csv)</label>
+                <input asp-for="CsvFile" type="file" class="form-control" accept=".csv,text/csv" required />
+                <span asp-validation-for="CsvFile" class="text-danger small"></span>
+            </div>
+
+            <button type="submit" class="btn btn-airbnb rounded-pill px-4 py-2 fw-bold">
+                <i class="bi bi-cloud-arrow-up-fill me-1"></i> Upload & Process Rates
+            </button>
+        </form>
+    </div>
+
+    <!-- CSV FORMAT INSTRUCTIONS & SAMPLE -->
+    <div class="card border rounded-4 p-4 shadow-sm bg-light">
+        <h6 class="fw-bold mb-2"><i class="bi bi-table text-dark me-2"></i> Expected CSV Format & Template</h6>
+        <p class="text-muted small mb-3">Your CSV file should have a header row followed by one row per listing ID:</p>
+        
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm bg-white mb-3" style="font-size:0.85rem;">
+                <thead class="table-dark">
+                    <tr>
+                        <th>PropertyId</th>
+                        <th>NightlyRate</th>
+                        <th>CleaningFee</th>
+                        <th>WeekendRate</th>
+                        <th>IsActive</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>280</td>
+                        <td>60</td>
+                        <td>340</td>
+                        <td>true</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>220</td>
+                        <td>50</td>
+                        <td>260</td>
+                        <td>true</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>420</td>
+                        <td>80</td>
+                        <td>490</td>
+                        <td>false</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <small class="text-muted">
+            <i class="bi bi-shield-check"></i> Security notice: You can only update listings that belong to your host account. Updates are logged to the system audit trail.
+        </small>
+    </div>
+
+</div>
+

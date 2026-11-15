@@ -1,0 +1,189 @@
+@{
+    ViewData["Title"] = "Digital QR Check-In Scanner";
+}
+
+@section Styles {
+    <style>
+        .scanner-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        }
+
+        #scannerVideo {
+            width: 100%;
+            max-width: 420px;
+            height: 280px;
+            border-radius: 16px;
+            object-fit: cover;
+            background: #0f172a;
+        }
+
+        .scanner-frame {
+            position: relative;
+            display: inline-block;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .scanner-laser {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: #ff385c;
+            box-shadow: 0 0 10px #ff385c;
+            animation: laserScan 2.5s infinite alternate ease-in-out;
+        }
+
+        @@keyframes laserScan {
+            0% { top: 10%; }
+            100% { top: 90%; }
+        }
+    </style>
+}
+
+<div class="container py-4" style="max-width: 720px;">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-danger bg-opacity-75 rounded-pill px-3 py-1 mb-1">[Additional Feature] QR Check-In Pass & Webcam Scanner</span>
+            <h2 class="fw-bold mb-0">Host Digital QR Scanner</h2>
+        </div>
+        <a asp-controller="Property" asp-action="MyProperties" class="btn btn-outline-secondary rounded-pill px-3">
+            <i class="bi bi-arrow-left"></i> Host Console
+        </a>
+    </div>
+
+    <!-- MAIN SCANNER CONTAINER -->
+    <div class="scanner-card text-center mb-4">
+        
+        <!-- Live Webcam Video Frame -->
+        <div class="scanner-frame shadow-sm mb-3">
+            <video id="scannerVideo" autoplay playsinline muted></video>
+            <div class="scanner-laser"></div>
+        </div>
+
+        <div class="d-flex justify-content-center gap-2 mb-3">
+            <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" id="btnStartCamera">
+                <i class="bi bi-camera-video"></i> Start Webcam
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnStopCamera">
+                <i class="bi bi-stop-circle"></i> Stop Camera
+            </button>
+        </div>
+
+        <p class="text-muted small mb-4">Point your camera at the guest's digital check-in pass, or enter their pass reference token manually below.</p>
+
+        <!-- MANUAL INPUT / INSTANT TEST SIMULATION -->
+        <div class="p-3 bg-light rounded-4 text-start">
+            <label class="form-label fw-semibold small text-uppercase mb-1">Verify Pass Token Manually</label>
+            <div class="input-group mb-2">
+                <span class="input-group-text"><i class="bi bi-qr-code"></i></span>
+                <input type="text" id="inputPassToken" class="form-control" placeholder="e.g. PASS-SUNWAY-003" />
+                <button type="button" id="btnVerifyPass" class="btn btn-airbnb px-4 fw-bold">
+                    Verify & Check In
+                </button>
+            </div>
+            
+            <!-- Quick Test Tokens -->
+            <div class="d-flex flex-wrap align-items-center gap-1 mt-2">
+                <span class="text-muted small">Quick Test Tokens:</span>
+                <button type="button" class="btn btn-sm btn-light border py-0 px-2 rounded-pill test-token-btn" data-token="PASS-PENANG-002">PASS-PENANG-002</button>
+                <button type="button" class="btn btn-sm btn-light border py-0 px-2 rounded-pill test-token-btn" data-token="PASS-SUNWAY-003">PASS-SUNWAY-003</button>
+                <button type="button" class="btn btn-sm btn-light border py-0 px-2 rounded-pill test-token-btn" data-token="PASS-KLCC-001">PASS-KLCC-001</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- VERIFICATION RESULT MODAL / BANNER -->
+    <div id="resultCard" class="card border-success border-2 rounded-4 p-4 shadow-sm bg-white d-none">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width:54px; height:54px;">
+                <i class="bi bi-check-lg fs-2"></i>
+            </div>
+            <div class="flex-grow-1">
+                <h5 class="fw-bold text-success mb-1" id="resStatus">Check-In Verified!</h5>
+                <p class="mb-0 text-dark fw-semibold" id="resGuestName">Guest: Nurul Aina</p>
+                <small class="text-muted" id="resPropertyTitle">KLCC Sky Residence</small>
+            </div>
+            <div>
+                <a href="#" id="resDetailsLink" class="btn btn-outline-dark rounded-pill px-3 btn-sm">
+                    View Reservation
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        let videoStream = null;
+        const video = document.getElementById('scannerVideo');
+
+        async function startWebcam() {
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = videoStream;
+            } catch (err) {
+                console.log('Webcam not accessible or permission denied', err);
+            }
+        }
+
+        function stopWebcam() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+        }
+
+        document.getElementById('btnStartCamera').addEventListener('click', startWebcam);
+        document.getElementById('btnStopCamera').addEventListener('click', stopWebcam);
+
+        // Auto-start camera if supported
+        startWebcam();
+
+        // Manual Verify & Test Tokens
+        $('.test-token-btn').on('click', function() {
+            $('#inputPassToken').val($(this).data('token'));
+            executeVerification();
+        });
+
+        $('#btnVerifyPass').on('click', executeVerification);
+
+        function executeVerification() {
+            const token = $('#inputPassToken').val();
+            if (!token) {
+                alert('Please enter or scan a pass token.');
+                return;
+            }
+
+            $.ajax({
+                url: '/Booking/VerifyCheckInPass',
+                type: 'POST',
+                data: { token: token },
+                success: function(res) {
+                    if (res.success) {
+                        $('#resultCard').removeClass('d-none');
+                        $('#resStatus').text(res.alreadyCheckedIn ? 'Guest Already Checked In' : 'Check-In Confirmed!');
+                        $('#resGuestName').text('Guest: ' + (res.guestName || 'Verified Guest'));
+                        $('#resPropertyTitle').text(res.propertyTitle || '');
+                        $('#resDetailsLink').attr('href', '/Booking/Details/' + res.bookingId);
+                        alert(res.message);
+                    } else {
+                        alert(res.message || 'Invalid or unauthorized check-in pass.');
+                    }
+                },
+                error: function() {
+                    alert('Error connecting to check-in server.');
+                }
+            });
+        }
+    </script>
+}
+

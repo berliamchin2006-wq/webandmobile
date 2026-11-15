@@ -1,81 +1,177 @@
 @model List<HomeNest.Models.User>
-
 @{
-    ViewData["Title"] = "User Management";
+    ViewData["Title"] = "Platform User Management & Host Verifications";
+    var pendingHosts = Model.Where(u => u.IdentityStatus == "PendingApproval").ToList();
 }
 
-<div class="mb-5">
+<div class="container py-4">
+    
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="fw-bold mb-0" style="color: #0f172a;">
-                <i class="bi bi-people-fill text-teal me-2"></i>User Management
-            </h2>
-            <p class="text-muted small">System administration for registered tenants, owners, and administrators</p>
+            <span class="badge bg-danger rounded-pill px-3 py-1 mb-1">Module 1.2 & 7.2: Governance</span>
+            <h2 class="fw-bold mb-0">User Directory & Host Verification Queue</h2>
         </div>
-        <span class="badge bg-primary px-3 py-2 fs-6">@Model.Count Total User(s)</span>
+        <a asp-controller="Booking" asp-action="AdminDashboard" class="btn btn-outline-dark rounded-pill px-3">
+            <i class="bi bi-speedometer2"></i> Admin Dashboard
+        </a>
     </div>
 
-    <div class="table-responsive bg-white rounded-4 shadow-sm p-3 border">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>User</th>
-                    <th>Role</th>
-                    <th>Phone</th>
-                    <th>Security / Status</th>
-                    <th>Joined</th>
-                    <th class="text-end">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var u in Model)
-                {
-                    bool isLocked = u.LockoutEnd.HasValue && u.LockoutEnd.Value > DateTime.Now;
-                    var roleBadge = u.Role switch
-                    {
-                        "Admin" => "bg-danger",
-                        "Owner" => "bg-warning text-dark",
-                        _ => "bg-success"
-                    };
+    <!-- 1. PENDING HOST IDENTITY VERIFICATION QUEUE -->
+    <div class="card border rounded-4 shadow-sm mb-5 overflow-hidden">
+        <div class="p-3 bg-warning bg-opacity-10 border-bottom d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-person-vcard text-warning fs-5"></i>
+                <h5 class="fw-bold mb-0 text-dark">Pending Host ID Verification Queue (@pendingHosts.Count)</h5>
+            </div>
+            <span class="badge bg-warning text-dark rounded-pill">Needs Admin Action</span>
+        </div>
 
+        @if (!pendingHosts.Any())
+        {
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-check2-circle fs-3 text-success d-block mb-1"></i>
+                All host verification requests have been processed. Queue is clear!
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Host Name</th>
+                            <th>Email & Phone</th>
+                            <th>Document Proof</th>
+                            <th>Submission Notes</th>
+                            <th class="text-end">Verification Decision</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var h in pendingHosts)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@h.FullName</strong>
+                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill d-block mt-1" style="width:fit-content;">ID #@h.Id</span>
+                                </td>
+                                <td>
+                                    <div>@h.Email</div>
+                                    <small class="text-muted">@h.PhoneNumber</small>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(h.IdDocumentPhoto))
+                                    {
+                                        <a href="/uploads/documents/@h.IdDocumentPhoto" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill">
+                                            <i class="bi bi-file-earmark-image"></i> Inspect Document
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">No photo uploaded</span>
+                                    }
+                                </td>
+                                <td class="small text-muted">
+                                    @(h.IdentityNotes ?? "Malaysian MyKad verification request")
+                                </td>
+                                <td class="text-end">
+                                    <form asp-action="ApproveHostVerification" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@h.Id" />
+                                        <input type="hidden" name="approve" value="true" />
+                                        <input type="hidden" name="notes" value="Approved by Admin as Verified Superhost." />
+                                        <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 me-1">
+                                            <i class="bi bi-check-lg"></i> Approve
+                                        </button>
+                                    </form>
+
+                                    <form asp-action="ApproveHostVerification" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@h.Id" />
+                                        <input type="hidden" name="approve" value="false" />
+                                        <input type="hidden" name="notes" value="Document image unclear. Please re-upload a higher resolution MyKad photo." />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                            <i class="bi bi-x-lg"></i> Reject
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <!-- 2. ALL REGISTERED USERS DIRECTORY -->
+    <div class="card border rounded-4 shadow-sm overflow-hidden bg-white">
+        <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0">Platform Users Directory (@Model.Count)</h5>
+            <span class="text-muted small">Includes Guests, Hosts & Administrators</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
                     <tr>
-                        <td>
-                            <div class="fw-bold">@u.FullName</div>
-                            <small class="text-muted">@u.Email</small>
-                        </td>
-                        <td><span class="badge @roleBadge">@u.Role</span></td>
-                        <td>@u.PhoneNumber</td>
-                        <td>
-                            @if (isLocked)
-                            {
-                                <span class="badge bg-danger"><i class="bi bi-lock-fill me-1"></i>Locked Out</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-success-subtle text-success border border-success"><i class="bi bi-check-circle me-1"></i>Active</span>
-                            }
-                        </td>
-                        <td>@u.CreatedAt.ToString("dd MMM yyyy")</td>
-                        <td class="text-end">
-                            @if (isLocked)
-                            {
-                                <form asp-action="UnlockUser" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@u.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-success">
-                                        <i class="bi bi-unlock-fill me-1"></i> Unlock
-                                    </button>
-                                </form>
-                            }
-                            else
-                            {
-                                <span class="text-muted small">Normal</span>
-                            }
-                        </td>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Contact</th>
+                        <th>Email Status</th>
+                        <th>Host Verification</th>
+                        <th>Security / Lockout</th>
+                        <th>Registered</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@u.FullName</strong>
+                                <small class="text-muted d-block">ID: #@u.Id</small>
+                            </td>
+                            <td>
+                                <span class="badge @(u.Role == "Admin" ? "bg-danger" : (u.Role == "Host" ? "bg-warning text-dark" : "bg-primary")) rounded-pill">
+                                    @u.Role
+                                </span>
+                            </td>
+                            <td>
+                                <div>@u.Email</div>
+                                <small class="text-muted">@u.PhoneNumber</small>
+                            </td>
+                            <td>
+                                @if (u.IsEmailVerified)
+                                {
+                                    <span class="badge bg-success-subtle text-success"><i class="bi bi-patch-check-fill"></i> Verified</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Unverified</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge @(u.IdentityStatus == "Verified" ? "bg-success" : (u.IdentityStatus == "PendingApproval" ? "bg-warning text-dark" : "bg-secondary")) rounded-pill">
+                                    @u.IdentityStatus
+                                </span>
+                            </td>
+                            <td>
+                                @if (u.LockoutEnd.HasValue && u.LockoutEnd > DateTime.Now)
+                                {
+                                    <span class="badge bg-danger"><i class="bi bi-lock-fill"></i> Locked (3 strikes)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-success small"><i class="bi bi-shield-check"></i> Normal</span>
+                                }
+                            </td>
+                            <td class="small text-muted">
+                                @u.CreatedAt.ToString("dd MMM yyyy")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
 
+</div>

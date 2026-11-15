@@ -8,7 +8,7 @@ namespace WebApplication1.Controllers
     {
         public IActionResult Index()
         {
-            return View();
+            return RedirectToAction("Catalog", "Property");
         }
 
         public IActionResult Privacy()

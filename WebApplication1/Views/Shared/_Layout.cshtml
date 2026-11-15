@@ -1,407 +1,553 @@
+@using System.Security.Claims
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - HomeNest House and Room Rental System</title>
-    <!-- Google Font Plus Jakarta Sans -->
+    <title>@ViewData["Title"] - HomeNest Airbnb Vacation Rentals</title>
+    
+    <!-- PWA Manifest & Meta -->
+    <link rel="manifest" href="~/manifest.json" />
+    <meta name="theme-color" content="#ff385c" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff385c'><path d='M12 2.1l8 7.2v11.7c0 .6-.4 1-1 1h-5v-6h-4v6H5c-.6 0-1-.4-1-1V9.3l8-7.2z'/></svg>" />
+
+    <!-- Google Fonts & Bootstrap Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     
-    <!-- Bootstrap 5 CSS & Icons -->
+    <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     
-    <!-- Leaflet.js CSS -->
+    <!-- Leaflet CSS for Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-
-    <!-- Custom Styling to match reference mockup -->
+    
+    <!-- Custom Airbnb Theme CSS -->
     <style>
         :root {
-            --hn-primary: #0d9488;
-            --hn-primary-dark: #0f766e;
-            --hn-primary-subtle: #f0fdfa;
-            --hn-dark-teal: #08211b;
-            --hn-accent-gold: #f59e0b;
+            --primary: #ff385c;
+            --primary-hover: #e00b41;
+            --primary-light: #fff1f2;
+            --secondary: #008489;
+            --dark: #222222;
+            --gray-700: #717171;
+            --gray-200: #ebebeb;
+            --gray-100: #f7f7f7;
+            --card-radius: 16px;
+            --bg-color: #ffffff;
+            --text-color: #222222;
+            --card-bg: #ffffff;
+            --border-color: #ebebeb;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --text-color: #f8fafc;
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --gray-100: #1e293b;
+            --gray-200: #334155;
+            --gray-700: #94a3b8;
+            --primary-light: rgba(255, 56, 92, 0.15);
         }
 
         body {
-            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-            background-color: #f8fafc;
-            color: #1e293b;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.25s ease, color 0.25s ease;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
+        /* Demo Mode Top Bar */
         .demo-bar {
-            background-color: #0b1120;
-            color: #94a3b8;
+            background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
+            color: #f8fafc;
             font-size: 0.8rem;
+            padding: 6px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
-
-        .navbar-brand-custom {
-            display: flex;
-            align-items: center;
-            text-decoration: none;
-        }
-
-        .brand-logo-sq {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #0d9488, #14b8a6);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ffffff;
-            font-size: 1.25rem;
-            box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.2);
-        }
-
-        .nav-pill-link {
-            color: #475569;
-            font-size: 0.88rem;
-            font-weight: 600;
-            padding: 0.45rem 0.85rem;
-            border-radius: 8px;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            transition: all 0.15s ease-in-out;
-        }
-
-        .nav-pill-link:hover {
-            color: #0d9488;
-            background-color: #f1f5f9;
-        }
-
-        .nav-pill-link.active {
-            color: #0d9488;
-            background-color: #e6f7f5;
+        .demo-badge {
+            background: #ff385c;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 20px;
             font-weight: 700;
+            font-size: 0.72rem;
+            letter-spacing: 0.5px;
         }
-
-        .hero-banner {
-            background: radial-gradient(circle at 85% 15%, #0f3d32 0%, #08201a 55%, #041410 100%);
-            border-radius: 24px;
-            color: #ffffff;
-            box-shadow: 0 20px 25px -5px rgba(4, 20, 16, 0.35);
-        }
-
-        .hero-verified-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            padding: 4px 14px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            color: #a7f3d0;
-            font-size: 0.82rem;
-            font-weight: 600;
-            border-radius: 50rem;
-            backdrop-filter: blur(4px);
-        }
-
-        .search-card-floating {
-            background: #ffffff;
-            border-radius: 18px;
-            padding: 1.4rem 1.5rem;
-            color: #1e293b;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
-        }
-
-        .search-label-micro {
-            font-size: 0.68rem;
-            font-weight: 800;
-            letter-spacing: 0.05em;
-            color: #64748b;
-            text-transform: uppercase;
-            margin-bottom: 0.35rem;
-            display: block;
-        }
-
-        .custom-teal-range::-webkit-slider-thumb {
-            background: #0d9488;
-        }
-        .custom-teal-range::-moz-range-thumb {
-            background: #0d9488;
-        }
-
-        .amenity-chip-check {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            font-size: 0.82rem;
+        .demo-btn {
+            background: rgba(255,255,255,0.12);
+            color: #f8fafc;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
             font-weight: 500;
-            color: #334155;
-            cursor: pointer;
-            margin-right: 0.8rem;
-            user-select: none;
-        }
-
-        .amenity-chip-check input {
-            accent-color: #0d9488;
-            cursor: pointer;
-        }
-
-        .btn-toggle-map {
-            color: #0d9488;
-            border: 1px solid #0d9488;
-            background: #f0fdfa;
-            border-radius: 50rem;
-            padding: 0.35rem 1rem;
-            font-size: 0.82rem;
-            font-weight: 700;
-            transition: all 0.2s ease;
-        }
-
-        .btn-toggle-map:hover {
-            background: #0d9488;
-            color: #ffffff;
-        }
-
-        .property-card-modern {
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            overflow: hidden;
-            background: #ffffff;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .property-card-modern:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 20px -5px rgba(0,0,0,0.08);
-        }
-
-        .quick-filter-chip {
-            border: 1px solid #cbd5e1;
-            background: #ffffff;
-            color: #475569;
-            font-size: 0.78rem;
-            font-weight: 600;
-            padding: 0.25rem 0.75rem;
-            border-radius: 50rem;
-            cursor: pointer;
-            transition: all 0.15s ease;
             text-decoration: none;
+            transition: all 0.2s;
+        }
+        .demo-btn:hover, .demo-btn.active {
+            background: white;
+            color: #0f172a;
+            font-weight: 700;
         }
 
-        .quick-filter-chip:hover, .quick-filter-chip.active {
-            background: #0d9488;
-            color: #ffffff;
-            border-color: #0d9488;
+        /* Airbnb Navbar */
+        .navbar-airbnb {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .brand-logo {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--primary) !important;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+        .brand-logo:hover {
+            color: var(--primary-hover) !important;
+        }
+
+        .nav-link-airbnb {
+            color: var(--text-color);
+            font-weight: 600;
+            font-size: 0.92rem;
+            padding: 8px 14px;
+            border-radius: 24px;
+            text-decoration: none;
+            transition: background 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .nav-link-airbnb:hover {
+            background: var(--gray-100);
+            color: var(--primary);
+        }
+
+        .user-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 6px 5px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+            background: var(--card-bg);
+            cursor: pointer;
+            transition: box-shadow 0.2s;
+        }
+        .user-pill:hover {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+        }
+
+        /* Primary Airbnb Buttons */
+        .btn-airbnb {
+            background: linear-gradient(90deg, #ff385c 0%, #e00b41 100%);
+            color: white;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 20px;
+            transition: all 0.2s;
+        }
+        .btn-airbnb:hover {
+            opacity: 0.95;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.35);
+        }
+
+        .btn-outline-airbnb {
+            border: 1.5px solid var(--border-color);
+            background: transparent;
+            color: var(--text-color);
+            font-weight: 600;
+            border-radius: 12px;
+            padding: 9px 18px;
+            transition: all 0.2s;
+        }
+        .btn-outline-airbnb:hover {
+            border-color: var(--dark);
+            background: var(--gray-100);
+            color: var(--text-color);
+        }
+
+        .badge-role {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 12px;
+        }
+        .badge-role-guest { background: #e0f2fe; color: #0284c7; }
+        .badge-role-host { background: #fef3c7; color: #d97706; }
+        .badge-role-admin { background: #fee2e2; color: #dc2626; }
+
+        /* Currency & Theme controls */
+        .quick-tool-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 20px;
+            padding: 4px 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .quick-tool-btn:hover {
+            background: var(--gray-100);
+        }
+
+        /* Card stylings */
+        .card-custom {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--card-radius);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card-custom:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+        }
+
+        footer {
+            margin-top: auto;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border-color);
+            padding: 24px 0;
+            font-size: 0.88rem;
+            color: var(--gray-700);
         }
     </style>
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
-    <!-- Top Demo Mode & Instant Role Switcher Bar -->
-    @{
-        var currentUserRole = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
-        var currentUserName = User.Claims.FirstOrDefault(c => c.Type == "FullName")?.Value ?? (User.Identity?.IsAuthenticated == true ? User.Identity.Name : "Guest");
-        bool isGuest = User.Identity?.IsAuthenticated != true;
-        bool isTenant = currentUserRole == "Tenant";
-        bool isOwner = currentUserRole == "Owner";
-        bool isAdmin = currentUserRole == "Admin";
-    }
+    <!-- DEMO MODE QUICK SWITCHER (TAR UMT Assignment Assessment) -->
+    <div class="demo-bar d-flex flex-wrap justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <span class="demo-badge"><i class="bi bi-shield-check"></i> BMIT2023 DEMO MODE</span>
+            <span class="d-none d-md-inline text-secondary-subtle">Airbnb Short-Stay System (8 Core Modules Active)</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-white-50 d-none d-sm-inline">Switch Role:</span>
+            <a href="/Account/SwitchRole?role=Guest" class="demo-btn @(User.IsInRole("Guest") ? "active" : "")"><i class="bi bi-person"></i> Guest (Nurul)</a>
+            <a href="/Account/SwitchRole?role=Host" class="demo-btn @(User.IsInRole("Host") ? "active" : "")"><i class="bi bi-house-door"></i> Host (Tan Ah Kow)</a>
+            <a href="/Account/SwitchRole?role=Admin" class="demo-btn @(User.IsInRole("Admin") ? "active" : "")"><i class="bi bi-shield-lock"></i> Admin</a>
+        </div>
+    </div>
 
-    <header>
-        <div class="demo-bar py-1 px-3 border-bottom border-dark">
-            <div class="container-fluid px-lg-4 d-flex flex-wrap justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-2 mb-1 mb-md-0">
-                    <span class="badge" style="background-color: #0d9488; font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px;">BMIT2023 DEMO MODE</span>
-                    <span class="text-white-50" style="font-size: 11.5px;">Instant Role Switcher (or use Login button to test 3-strike lockout & Captcha):</span>
+    <!-- MAIN AIRBNB NAVBAR -->
+    <header class="navbar-airbnb">
+        <div class="container-fluid px-lg-5">
+            <div class="d-flex justify-content-between align-items-center">
+                
+                <!-- Logo & Brand -->
+                <div class="d-flex align-items-center gap-4">
+                    <a class="brand-logo" asp-controller="Property" asp-action="Catalog">
+                        <i class="bi bi-houses-fill"></i>
+                        <span>HomeNest</span>
+                    </a>
+
+                    <!-- Navigation Links -->
+                    <nav class="d-none d-lg-flex align-items-center gap-1">
+                        <a class="nav-link-airbnb" asp-controller="Property" asp-action="Catalog">
+                            <i class="bi bi-compass"></i> Explore Stays
+                        </a>
+                        @if (User.Identity != null && User.Identity.IsAuthenticated)
+                        {
+                            <a class="nav-link-airbnb" asp-controller="Booking" asp-action="MyBookings">
+                                <i class="bi bi-suitcase-lg"></i> My Trips
+                            </a>
+                            <a class="nav-link-airbnb" asp-controller="Property" asp-action="Wishlist">
+                                <i class="bi bi-heart"></i> Wishlist
+                            </a>
+                            <a class="nav-link-airbnb" asp-controller="Booking" asp-action="Maintenance">
+                                <i class="bi bi-tools"></i> Support / Issues
+                            </a>
+                        }
+                    </nav>
                 </div>
-                <div class="d-flex align-items-center flex-wrap gap-2">
-                    <a asp-controller="Account" asp-action="SwitchGuest" asp-route-returnUrl="@Context.Request.Path" 
-                       class="btn btn-sm py-0 px-2 text-white @(isGuest ? "btn-secondary" : "btn-outline-secondary")" style="font-size: 11.5px; border-radius: 6px;">
-                        <i class="bi bi-eye me-1"></i> Guest
-                    </a>
-                    <a asp-controller="Account" asp-action="QuickLogin" asp-route-role="Tenant" asp-route-returnUrl="@Context.Request.Path" 
-                       class="btn btn-sm py-0 px-2 text-white @(isTenant ? "border-0" : "btn-outline-secondary")" style="font-size: 11.5px; border-radius: 6px; @(isTenant ? "background-color: #059669;" : "")">
-                        👨‍🎓 Tenant (Nurul Aina)
-                    </a>
-                    <a asp-controller="Account" asp-action="QuickLogin" asp-route-role="Owner" asp-route-returnUrl="@Context.Request.Path" 
-                       class="btn btn-sm py-0 px-2 text-white @(isOwner ? "border-0 bg-warning text-dark" : "btn-outline-secondary")" style="font-size: 11.5px; border-radius: 6px;">
-                        🏠 House Owner (Tan Ah Kow)
-                    </a>
-                    <a asp-controller="Account" asp-action="QuickLogin" asp-route-role="Admin" asp-route-returnUrl="@Context.Request.Path" 
-                       class="btn btn-sm py-0 px-2 text-white @(isAdmin ? "border-0 bg-danger" : "btn-outline-secondary")" style="font-size: 11.5px; border-radius: 6px;">
-                        👤 Admin
-                    </a>
-                    <a asp-controller="Account" asp-action="ResetData" asp-route-returnUrl="@Context.Request.Path" 
-                       class="btn btn-sm btn-outline-secondary py-0 px-2 text-light" style="font-size: 11.5px; border-radius: 6px;" title="Reset database to fresh demo state">
-                        <i class="bi bi-arrow-repeat me-1"></i> Reset Data
-                    </a>
+
+                <!-- Right Side Controls (Host shortcuts, Theme, Currency, Account) -->
+                <div class="d-flex align-items-center gap-3">
+                    
+                    <!-- PWA Push Notification Activation Button -->
+                    <button id="btnPwaNotify" class="quick-tool-btn d-none d-md-inline-flex align-items-center gap-1" title="Enable Desktop Push Check-In Reminders">
+                        <i class="bi bi-bell"></i> <span>Notifications</span>
+                    </button>
+
+                    <!-- Currency Switcher -->
+                    <div class="dropdown">
+                        <button class="quick-tool-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" id="currencyBtn">
+                            <i class="bi bi-cash-stack"></i> <span id="currentCurrencyLabel">MYR (RM)</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius:12px;">
+                            <li><h6 class="dropdown-header">Select Currency</h6></li>
+                            <li><a class="dropdown-item currency-select" href="#" data-currency="MYR" data-rate="1" data-symbol="RM">🇲🇾 MYR - Ringgit (RM)</a></li>
+                            <li><a class="dropdown-item currency-select" href="#" data-currency="USD" data-rate="0.225" data-symbol="$">🇺🇸 USD - US Dollar ($)</a></li>
+                            <li><a class="dropdown-item currency-select" href="#" data-currency="SGD" data-rate="0.301" data-symbol="S$">🇸🇬 SGD - Singapore Dollar (S$)</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- Dark / Light Theme Switcher -->
+                    <button id="themeToggleBtn" class="quick-tool-btn" title="Toggle Dark/Light Mode">
+                        <i class="bi bi-moon-stars" id="themeIcon"></i>
+                    </button>
+
+                    <!-- Host Portals (Host or Admin only) -->
+                    @if (User.IsInRole("Host") || User.IsInRole("Admin"))
+                    {
+                        <div class="dropdown d-none d-md-inline">
+                            <button class="btn btn-outline-airbnb dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-house-gear"></i> Host Console
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius:14px; min-width:210px;">
+                                <li><h6 class="dropdown-header">Listing Management</h6></li>
+                                <li><a class="dropdown-item" asp-controller="Property" asp-action="MyProperties"><i class="bi bi-grid-fill me-2"></i> My Properties</a></li>
+                                <li><a class="dropdown-item" asp-controller="Property" asp-action="Create"><i class="bi bi-plus-circle me-2"></i> Add New Listing</a></li>
+                                <li><a class="dropdown-item" asp-controller="Property" asp-action="BatchImport"><i class="bi bi-file-earmark-spreadsheet me-2"></i> Batch CSV Rate Import</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><h6 class="dropdown-header">Operations & Payouts</h6></li>
+                                <li><a class="dropdown-item" asp-controller="Booking" asp-action="QrScanner"><i class="bi bi-qr-code-scan me-2 text-danger"></i> QR Check-In Scanner</a></li>
+                                <li><a class="dropdown-item" asp-controller="Booking" asp-action="HostEarnings"><i class="bi bi-wallet2 me-2 text-success"></i> Earnings & Payouts</a></li>
+                                <li><a class="dropdown-item" asp-controller="Booking" asp-action="HostDashboard"><i class="bi bi-graph-up-arrow me-2 text-primary"></i> Performance Analytics</a></li>
+                            </ul>
+                        </div>
+                    }
+
+                    <!-- Admin Portal (Admin only) -->
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <div class="dropdown d-none d-md-inline">
+                            <button class="btn btn-outline-danger dropdown-toggle" type="button" data-bs-toggle="dropdown" style="border-radius:12px;">
+                                <i class="bi bi-shield-lock-fill"></i> Admin
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius:14px; min-width:230px;">
+                                <li><h6 class="dropdown-header text-danger">Platform Oversight</h6></li>
+                                <li><a class="dropdown-item" asp-controller="Booking" asp-action="AdminDashboard"><i class="bi bi-speedometer2 me-2"></i> Platform Dashboard</a></li>
+                                <li><a class="dropdown-item" asp-controller="Account" asp-action="Users"><i class="bi bi-people-fill me-2"></i> Users & Host Verification</a></li>
+                                <li><a class="dropdown-item" asp-controller="Account" asp-action="AuditLogs"><i class="bi bi-journal-text me-2"></i> Security Audit Logs</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-primary" asp-controller="Booking" asp-action="ExportFinancialCsv"><i class="bi bi-download me-2"></i> Export Financial CSV</a></li>
+                            </ul>
+                        </div>
+                    }
+
+                    <!-- User Account Pill Dropdown -->
+                    @if (User.Identity != null && User.Identity.IsAuthenticated)
+                    {
+                        string fullName = User.FindFirst("FullName")?.Value ?? User.Identity.Name ?? "User";
+                        string role = User.FindFirstValue(ClaimTypes.Role) ?? "Guest";
+                        string roleBadgeClass = role switch { "Admin" => "badge-role-admin", "Host" => "badge-role-host", _ => "badge-role-guest" };
+
+                        <div class="dropdown">
+                            <div class="user-pill dropdown-toggle" data-bs-toggle="dropdown">
+                                <i class="bi bi-list fs-6"></i>
+                                <div class="d-none d-sm-block text-start" style="line-height:1.2;">
+                                    <span class="fw-bold d-block text-truncate" style="max-width:110px; font-size:0.85rem;">@fullName</span>
+                                    <span class="badge-role @roleBadgeClass">@role</span>
+                                </div>
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:32px; height:32px; font-weight:700; font-size:0.85rem;">
+                                    @(fullName.Length > 0 ? fullName[0].ToString().ToUpper() : "U")
+                                </div>
+                            </div>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius:14px; min-width:210px;">
+                                <li><h6 class="dropdown-header">Signed in as <strong>@fullName</strong></h6></li>
+                                <li><a class="dropdown-item" asp-controller="Account" asp-action="Profile"><i class="bi bi-person-gear me-2"></i> Profile & Webcam Photo</a></li>
+                                <li><a class="dropdown-item" asp-controller="Booking" asp-action="MyBookings"><i class="bi bi-suitcase-lg me-2"></i> My Trips</a></li>
+                                <li><a class="dropdown-item" asp-controller="Property" asp-action="Wishlist"><i class="bi bi-heart me-2"></i> Wishlist Folders</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" asp-controller="Account" asp-action="Logout"><i class="bi bi-box-arrow-right me-2"></i> Sign Out</a></li>
+                            </ul>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center gap-2">
+                            <a class="btn-outline-airbnb text-decoration-none" asp-controller="Account" asp-action="Login">Log In</a>
+                            <a class="btn-airbnb text-decoration-none" asp-controller="Account" asp-action="Register">Sign Up</a>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
-
-        <!-- Main Navigation Bar -->
-        <nav class="navbar navbar-expand-xl bg-white border-bottom shadow-sm py-2">
-            <div class="container-fluid px-lg-4">
-                <!-- Brand -->
-                <a class="navbar-brand-custom me-4" asp-controller="Property" asp-action="Catalog">
-                    <div class="brand-logo-sq me-2">
-                        <i class="bi bi-house-door-fill"></i>
-                    </div>
-                    <div class="d-flex flex-column lh-1">
-                        <span class="fw-bold fs-5 tracking-tight" style="color: #0f172a;">HomeNest</span>
-                        <span class="text-uppercase text-muted" style="font-size: 9px; letter-spacing: 0.5px; font-weight: 700;">MY House & Room Rental</span>
-                    </div>
-                </a>
-
-                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#homenestNav" aria-controls="homenestNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
-                <div class="collapse navbar-collapse" id="homenestNav">
-                    <!-- Nav Tabs -->
-                    @{
-                        string currentCtrl = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
-                        string currentAct = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
-                    }
-                    <ul class="navbar-nav me-auto mb-2 mb-xl-0 gap-1">
-                        <li class="nav-item">
-                            <a class="nav-pill-link @(currentCtrl == "Property" && currentAct == "Catalog" ? "active" : "")" asp-controller="Property" asp-action="Catalog">
-                                <i class="bi bi-search text-teal"></i> Browse Rentals
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-pill-link @(currentCtrl == "Booking" && currentAct == "ViewingPasses" ? "active" : "")" asp-controller="Booking" asp-action="ViewingPasses">
-                                <i class="bi bi-calendar3"></i> Viewing Passes 
-                                <span class="badge rounded-pill" style="background-color: #ccfbf1; color: #0f766e; font-size: 10px;">1</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-pill-link @(currentCtrl == "Booking" && currentAct == "Leases" ? "active" : "")" asp-controller="Booking" asp-action="Leases">
-                                <i class="bi bi-file-earmark-text"></i> Leases & Billing
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-pill-link @(currentCtrl == "Booking" && currentAct == "Maintenance" ? "active" : "")" asp-controller="Booking" asp-action="Maintenance">
-                                <i class="bi bi-tools"></i> Maintenance
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-pill-link @(currentCtrl == "Property" && currentAct == "MyProperties" ? "active" : "")" asp-controller="Property" asp-action="MyProperties">
-                                <i class="bi bi-building"></i> Owner Portal
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-pill-link @(currentCtrl == "Booking" && currentAct == "Dashboard" ? "active" : "")" asp-controller="Booking" asp-action="Dashboard">
-                                <i class="bi bi-pie-chart"></i> Admin & Analytics
-                            </a>
-                        </li>
-                    </ul>
-
-                    <!-- Right Controls -->
-                    <div class="d-flex align-items-center gap-3">
-                        <button class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0 fw-semibold" style="font-size: 11px;">EN</button>
-                        <button class="btn btn-sm btn-link text-secondary p-0 text-decoration-none" id="darkModeBtn" title="Toggle dark mode">
-                            <i class="bi bi-moon fs-5"></i>
-                        </button>
-                        <a href="javascript:void(0)" class="btn btn-sm btn-link text-secondary p-0 text-decoration-none position-relative" title="Favorites">
-                            <i class="bi bi-heart fs-5 text-danger"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 9px;">1</span>
-                        </a>
-
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                            <div class="dropdown ps-2 border-start">
-                                <a class="d-flex align-items-center gap-2 text-decoration-none dropdown-toggle text-dark" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <div class="text-end lh-1">
-                                        <div class="fw-bold small text-dark">@currentUserName</div>
-                                        <span class="badge" style="background-color: #ecfdf5; color: #059669; font-size: 10px; font-weight: 700;">@currentUserRole</span>
-                                    </div>
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 mt-2">
-                                    <li>
-                                        <a class="dropdown-item py-2 small" asp-controller="Account" asp-action="Profile">
-                                            <i class="bi bi-person-gear me-2 text-muted"></i> My Profile
-                                        </a>
-                                    </li>
-                                    @if (isAdmin)
-                                    {
-                                        <li>
-                                            <a class="dropdown-item py-2 small" asp-controller="Account" asp-action="Users">
-                                                <i class="bi bi-people me-2 text-primary"></i> Manage Users
-                                            </a>
-                                        </li>
-                                    }
-                                    <li><hr class="dropdown-divider my-1"></li>
-                                    <li>
-                                        <a class="dropdown-item py-2 small text-danger" asp-controller="Account" asp-action="Logout">
-                                            <i class="bi bi-power me-2"></i> Log Out
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="d-flex align-items-center gap-2 ps-2 border-start">
-                                <a asp-controller="Account" asp-action="Login" class="btn btn-sm btn-outline-primary fw-semibold px-3 py-1" style="border-radius: 8px;">Log In</a>
-                                <a asp-controller="Account" asp-action="Register" class="btn btn-sm btn-primary fw-semibold px-3 py-1 text-white" style="background-color: #0d9488; border-color: #0d9488; border-radius: 8px;">Register</a>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
-        </nav>
     </header>
 
-    <!-- Main Container -->
-    <main role="main" class="container-fluid px-lg-4 py-3">
+    <!-- SYSTEM ALERTS / TEMPDATA BANNER -->
+    <div class="container-fluid px-lg-5 mt-3">
         @if (TempData["SuccessMessage"] != null)
         {
-            <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-3 py-2" role="alert">
-                <i class="bi bi-check-circle-fill me-2 text-success"></i> @TempData["SuccessMessage"]
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert" style="border-radius:12px;">
+                <i class="bi bi-check-circle-fill me-2"></i> @TempData["SuccessMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         }
         @if (TempData["ErrorMessage"] != null)
         {
-            <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-3 py-2" role="alert">
-                <i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i> @TempData["ErrorMessage"]
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert" style="border-radius:12px;">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["ErrorMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         }
+        @if (TempData["ActivationSimulationLink"] != null)
+        {
+            <div class="alert alert-info alert-dismissible fade show shadow-sm" role="alert" style="border-radius:12px;">
+                <strong><i class="bi bi-envelope-check-fill me-2"></i> Email Activation Simulation:</strong>
+                Click here to verify: <a href="@TempData["ActivationSimulationLink"]" class="fw-bold alert-link">@TempData["ActivationSimulationLink"]</a>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+        @if (TempData["ResetSimulationLink"] != null)
+        {
+            <div class="alert alert-warning alert-dismissible fade show shadow-sm" role="alert" style="border-radius:12px;">
+                <strong><i class="bi bi-key-fill me-2"></i> Password Reset Simulation:</strong>
+                Click here to reset password: <a href="@TempData["ResetSimulationLink"]" class="fw-bold alert-link">@TempData["ResetSimulationLink"]</a>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+    </div>
 
+    <!-- MAIN BODY -->
+    <main role="main" class="pb-5">
         @RenderBody()
     </main>
 
-    <!-- Footer -->
-    <footer class="footer bg-white border-top text-muted py-3 mt-5">
-        <div class="container-fluid px-lg-4 d-flex flex-wrap justify-content-between align-items-center small">
-            <div>
-                &copy; 2026 <strong>HomeNest</strong> (BMIT2023 House and Room Rental System). Built for student & professional accommodation.
-            </div>
-            <div class="d-flex gap-3 text-secondary">
-                <span>Verified Landlords</span>
-                <span>•</span>
-                <span>QR Viewing Passes</span>
-                <span>•</span>
-                <span>Instant E-Receipts</span>
+    <!-- FOOTER -->
+    <footer>
+        <div class="container-fluid px-lg-5">
+            <div class="row g-4 justify-content-between align-items-center">
+                <div class="col-md-6">
+                    <p class="mb-1 fw-bold text-dark-emphasis">HomeNest Vacation Rentals & Airbnb Booking System</p>
+                    <p class="mb-0 text-muted" style="font-size:0.8rem;">
+                        Built for TAR UMT BMIT2023 Web and Mobile Systems Assignment. Fully compliant with .NET 10, EF Core Code-First with Data Annotations, and Manual Cookie-Based Authentication.
+                    </p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <div class="d-flex flex-wrap justify-content-md-end gap-3" style="font-size:0.82rem;">
+                        <span><i class="bi bi-shield-check text-success"></i> 3-Strike Lockout Active</span>
+                        <span><i class="bi bi-camera text-primary"></i> Live Webcam Enabled</span>
+                        <span><i class="bi bi-qr-code text-danger"></i> QR Pass Scanner</span>
+                        <span><i class="bi bi-bar-chart text-info"></i> Chart.js Analytics</span>
+                    </div>
+                </div>
             </div>
         </div>
     </footer>
 
-    <!-- Scripts -->
+    <!-- SCRIPTS -->
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- PWA & UI Preference Scripts (Theme & Currency) -->
     <script>
-        // Dark mode toggle
-        const dmBtn = document.getElementById("darkModeBtn");
-        if (dmBtn) {
-            dmBtn.addEventListener("click", () => {
-                const html = document.documentElement;
-                const current = html.getAttribute("data-bs-theme");
-                const next = current === "dark" ? "light" : "dark";
-                html.setAttribute("data-bs-theme", next);
-                dmBtn.innerHTML = next === "dark" ? '<i class="bi bi-sun fs-5 text-warning"></i>' : '<i class="bi bi-moon fs-5"></i>';
+        // 1. Theme Management (Dark/Light)
+        (function() {
+            const savedTheme = localStorage.getItem('homenest_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+
+            document.getElementById('themeToggleBtn').addEventListener('click', function() {
+                const current = document.documentElement.getAttribute('data-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('homenest_theme', next);
+                updateThemeIcon(next);
+            });
+
+            function updateThemeIcon(theme) {
+                const icon = document.getElementById('themeIcon');
+                if (theme === 'dark') {
+                    icon.className = 'bi bi-sun-fill text-warning';
+                } else {
+                    icon.className = 'bi bi-moon-stars';
+                }
+            }
+        })();
+
+        // 2. Global Currency Switcher (MYR, USD, SGD)
+        (function() {
+            const savedCurrency = localStorage.getItem('homenest_currency') || 'MYR';
+            const savedSymbol = localStorage.getItem('homenest_symbol') || 'RM';
+            const savedRate = parseFloat(localStorage.getItem('homenest_rate')) || 1.0;
+
+            updateCurrencyDisplay(savedCurrency, savedSymbol);
+
+            document.querySelectorAll('.currency-select').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const currency = this.getAttribute('data-currency');
+                    const rate = parseFloat(this.getAttribute('data-rate'));
+                    const symbol = this.getAttribute('data-symbol');
+
+                    localStorage.setItem('homenest_currency', currency);
+                    localStorage.setItem('homenest_rate', rate);
+                    localStorage.setItem('homenest_symbol', symbol);
+
+                    updateCurrencyDisplay(currency, symbol);
+                    convertAllPrices(rate, symbol);
+                });
+            });
+
+            function updateCurrencyDisplay(cur, sym) {
+                const label = document.getElementById('currentCurrencyLabel');
+                if (label) label.textContent = `${cur} (${sym})`;
+            }
+
+            function convertAllPrices(rate, symbol) {
+                document.querySelectorAll('[data-base-price]').forEach(el => {
+                    const base = parseFloat(el.getAttribute('data-base-price'));
+                    if (!isNaN(base)) {
+                        const converted = (base * rate).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                        el.textContent = `${symbol} ${converted}`;
+                    }
+                });
+            }
+
+            // Initial conversion on page load
+            if (savedRate !== 1.0) {
+                convertAllPrices(savedRate, savedSymbol);
+            }
+        })();
+
+        // 3. PWA Push Notifications & Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW failed', err));
+            });
+        }
+
+        const notifyBtn = document.getElementById('btnPwaNotify');
+        if (notifyBtn) {
+            notifyBtn.addEventListener('click', async () => {
+                if (!('Notification' in window)) {
+                    alert('This browser does not support desktop notifications.');
+                    return;
+                }
+                const perm = await Notification.requestPermission();
+                if (perm === 'granted') {
+                    new Notification('HomeNest Check-In Reminder', {
+                        body: 'Reminder: Check-in for your reservation is today at 3:00 PM! Click to open your digital QR pass.',
+                        icon: '/favicon.ico'
+                    });
+                    alert('Desktop push reminders successfully enabled!');
+                } else {
+                    alert('Notification permission was denied.');
+                }
             });
         }
     </script>

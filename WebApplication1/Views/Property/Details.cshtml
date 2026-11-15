@@ -1,433 +1,545 @@
 @model HomeNest.Models.Property
-
 @{
     ViewData["Title"] = Model.Title;
-    var amenities = string.IsNullOrWhiteSpace(Model.AmenitiesCsv) 
-        ? Array.Empty<string>() 
-        : Model.AmenitiesCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-    bool isTenant = User.Identity?.IsAuthenticated == true && User.IsInRole("Tenant");
-    bool isGuest = User.Identity?.IsAuthenticated != true;
+    var photos = Model.Photos.OrderBy(ph => ph.DisplayOrder).ToList();
+    var coverPhoto = photos.FirstOrDefault(ph => ph.IsCover)?.FileName ?? photos.FirstOrDefault()?.FileName ?? "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80";
+    var secondaryPhotos = photos.Where(ph => ph.FileName != coverPhoto).Take(2).ToList();
+
+    double avgRating = Model.Reviews.Any() ? Math.Round(Model.Reviews.Average(r => r.OverallRating), 2) : 5.0;
+    int reviewCount = Model.Reviews.Count;
+
+    double avgCleanliness = Model.Reviews.Any() ? Math.Round(Model.Reviews.Average(r => r.CleanlinessRating), 1) : 5.0;
+    double avgAccuracy = Model.Reviews.Any() ? Math.Round(Model.Reviews.Average(r => r.AccuracyRating), 1) : 5.0;
+    double avgCommunication = Model.Reviews.Any() ? Math.Round(Model.Reviews.Average(r => r.CommunicationRating), 1) : 5.0;
+    double avgLocation = Model.Reviews.Any() ? Math.Round(Model.Reviews.Average(r => r.LocationRating), 1) : 5.0;
+
+    var amenitiesList = Model.AmenitiesCsv.Split(',', StringSplitOptions.RemoveEmptyEntries);
 }
 
-<div class="mb-5">
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a asp-action="Catalog" class="text-decoration-none">Catalog</a></li>
-            <li class="breadcrumb-item active" aria-current="page">@Model.Title</li>
-        </ol>
-    </nav>
+@section Styles {
+    <style>
+        .gallery-container {
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+        .gallery-main {
+            height: 420px;
+            width: 100%;
+            object-fit: cover;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .gallery-main:hover {
+            transform: scale(1.02);
+        }
+        .gallery-thumb {
+            height: 205px;
+            width: 100%;
+            object-fit: cover;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .gallery-thumb:hover {
+            transform: scale(1.02);
+        }
 
-    <div class="row g-4">
-        <!-- Left Column: Details, Photos & Floor Plan -->
-        <div class="col-lg-8">
-            <div class="card border-0 shadow-sm p-4 mb-4 rounded-4">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="badge px-3 py-1 text-white" style="background:#0d9488; font-size:12px;">@Model.PropertyType</span>
-                    <span class="badge @(Model.IsActive ? "bg-success" : "bg-secondary")">@(Model.IsActive ? "Verified Active" : "Inactive")</span>
+        .booking-widget-card {
+            border-radius: 20px;
+            box-shadow: 0 12px 36px rgba(0,0,0,0.12);
+            border: 1px solid var(--border-color);
+            padding: 24px;
+            background: var(--card-bg);
+            position: sticky;
+            top: 90px;
+        }
+
+        .rating-bar-track {
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+            flex-grow: 1;
+        }
+        .rating-bar-fill {
+            height: 100%;
+            background: #222;
+            border-radius: 3px;
+        }
+
+        .amenity-chip {
+            background: var(--gray-100);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 10px 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+    </style>
+}
+
+<div class="container-fluid px-lg-5 pt-3">
+    
+    <!-- HEADER -->
+    <div class="mb-3">
+        <h1 class="fw-bold mb-2">@Model.Title</h1>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2" style="font-size:0.95rem;">
+                <span class="fw-bold"><i class="bi bi-star-fill text-warning"></i> @(reviewCount > 0 ? avgRating.ToString("0.0") : "New")</span>
+                <span>•</span>
+                <a href="#reviewsSection" class="text-dark fw-semibold">@(reviewCount) reviews</a>
+                @if (ViewBag.IsSuperhost == true)
+                {
+                    <span>•</span>
+                    <span class="badge bg-warning text-dark"><i class="bi bi-award-fill"></i> Superhost</span>
+                }
+                <span>•</span>
+                <span class="text-muted"><i class="bi bi-geo-alt"></i> @Model.Address, @Model.City, @Model.State</span>
+            </div>
+
+            <!-- Share & Save Buttons -->
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-outline-dark rounded-pill px-3 py-1 btn-wishlist-toggle" data-property-id="@Model.Id">
+                    <i class="bi @(ViewBag.IsSavedToWishlist == true ? "bi-heart-fill text-danger" : "bi-heart")" id="wishlistIcon"></i>
+                    <span id="wishlistText">@(ViewBag.IsSavedToWishlist == true ? "Saved" : "Save")</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AIRBNB PHOTO GALLERY -->
+    <div class="row g-2 gallery-container">
+        <div class="col-12 col-md-8">
+            <div class="overflow-hidden h-100 rounded-3">
+                <img src="@coverPhoto" alt="@Model.Title" class="gallery-main" />
+            </div>
+        </div>
+        <div class="col-12 col-md-4 d-flex flex-column gap-2">
+            @if (secondaryPhotos.Any())
+            {
+                foreach (var ph in secondaryPhotos)
+                {
+                    <div class="overflow-hidden rounded-3">
+                        <img src="@ph.FileName" alt="Photo" class="gallery-thumb" />
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="overflow-hidden rounded-3">
+                    <img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80" alt="Interior" class="gallery-thumb" />
                 </div>
-                <h2 class="fw-bold mb-1" style="color:#0f172a;">@Model.Title</h2>
-                <p class="text-muted mb-3 small">
-                    <i class="bi bi-geo-alt-fill text-danger me-1"></i> @Model.Address, @Model.Postcode @Model.City, @Model.State
-                </p>
+                <div class="overflow-hidden rounded-3">
+                    <img src="https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80" alt="Bathroom" class="gallery-thumb" />
+                </div>
+            }
+        </div>
+    </div>
 
-                <!-- Photos Carousel -->
-                <div class="mb-4">
-                    @if (Model.Photos.Any())
+    <!-- MAIN TWO COLUMN SECTION -->
+    <div class="row g-5">
+        
+        <!-- LEFT COLUMN: PROPERTY DETAILS, HOST, AMENITIES, REVIEWS -->
+        <div class="col-12 col-lg-8">
+            
+            <!-- Space Overview & Host Card -->
+            <div class="d-flex justify-content-between align-items-center pb-4 border-bottom">
+                <div>
+                    <h3 class="fw-bold mb-1">Entire @Model.PropertyType hosted by @Model.Host.FullName</h3>
+                    <p class="text-muted mb-0" style="font-size:0.95rem;">
+                        @Model.MaxGuests guests · @Model.Bedrooms bedrooms · @Model.Beds beds · @Model.Bathrooms bathrooms
+                    </p>
+                </div>
+                <div class="text-center">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-1" style="width:54px; height:54px; font-weight:800; font-size:1.2rem;">
+                        @(Model.Host.FullName.Length > 0 ? Model.Host.FullName[0].ToString().ToUpper() : "H")
+                    </div>
+                    @if (Model.Host.IdentityStatus == "Verified")
                     {
-                        <div id="propertyCarousel" class="carousel slide rounded-4 overflow-hidden shadow-sm" data-bs-ride="carousel">
-                            <div class="carousel-inner" style="max-height: 420px;">
-                                @for (int i = 0; i < Model.Photos.Count; i++)
-                                {
-                                    var photo = Model.Photos[i];
-                                    string pUrl = photo.FileName;
-                                    if (!pUrl.StartsWith("http") && !pUrl.StartsWith("/"))
-                                    {
-                                        pUrl = "/uploads/properties/" + pUrl;
-                                    }
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size:0.7rem;">
+                            <i class="bi bi-patch-check-fill"></i> Verified Host
+                        </span>
+                    }
+                </div>
+            </div>
 
-                                    <div class="carousel-item @(i == 0 ? "active" : "")">
-                                        <img src="@pUrl" class="d-block w-100" style="object-fit: cover; height: 420px;" alt="Photo" onerror="this.src='https://placehold.co/800x500/e2e8f0/334155?text=HomeNest';" />
+            <!-- Key Highlights -->
+            <div class="py-4 border-bottom d-flex flex-column gap-3">
+                <div class="d-flex gap-3">
+                    <i class="bi bi-door-open fs-3 text-dark"></i>
+                    <div>
+                        <h6 class="fw-bold mb-0">Self check-in</h6>
+                        <small class="text-muted">Check in smoothly with electronic smart lock & digital QR pass.</small>
+                    </div>
+                </div>
+                @if (ViewBag.IsSuperhost == true)
+                {
+                    <div class="d-flex gap-3">
+                        <i class="bi bi-award fs-3 text-dark"></i>
+                        <div>
+                            <h6 class="fw-bold mb-0">@Model.Host.FullName is a Superhost</h6>
+                            <small class="text-muted">Superhosts are experienced, highly rated hosts who are committed to providing great stays for guests.</small>
+                        </div>
+                    </div>
+                }
+                <div class="d-flex gap-3">
+                    <i class="bi bi-shield-x fs-3 text-dark"></i>
+                    <div>
+                        <h6 class="fw-bold mb-0">Cancellation Policy: @Model.CancellationPolicy</h6>
+                        <small class="text-muted">
+                            @if (Model.CancellationPolicy == "Flexible")
+                            {
+                                <span>Full refund up to 24 hours before check-in. 50% refund afterwards.</span>
+                            }
+                            else if (Model.CancellationPolicy == "Moderate")
+                            {
+                                <span>Full refund up to 5 days before check-in. 50% refund afterwards.</span>
+                            }
+                            else
+                            {
+                                <span>50% refund up to 7 days before check-in. Non-refundable afterwards.</span>
+                            }
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="py-4 border-bottom">
+                <h4 class="fw-bold mb-3">About this space</h4>
+                <p class="text-secondary" style="line-height:1.7; white-space:pre-line;">@Model.Description</p>
+            </div>
+
+            <!-- Amenities -->
+            <div class="py-4 border-bottom">
+                <h4 class="fw-bold mb-3">What this place offers</h4>
+                <div class="row g-3">
+                    @foreach (var am in amenitiesList)
+                    {
+                        string icon = am switch
+                        {
+                            "WiFi" => "bi-wifi",
+                            "AirCond" => "bi-snow",
+                            "Kitchen" => "bi-cup-hot",
+                            "Pool" => "bi-water",
+                            "FreeParking" => "bi-car-front",
+                            "TV" => "bi-tv",
+                            "Gym" => "bi-activity",
+                            "SeaView" => "bi-water",
+                            "SelfCheckIn" => "bi-key",
+                            _ => "bi-check-circle"
+                        };
+                        <div class="col-6 col-md-4">
+                            <div class="amenity-chip w-100">
+                                <i class="bi @icon fs-5 text-dark"></i>
+                                <span>@am</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- House Rules -->
+            <div class="py-4 border-bottom">
+                <h4 class="fw-bold mb-3">House rules</h4>
+                <div class="p-3 bg-light rounded-4 border">
+                    <p class="mb-0 text-secondary" style="line-height:1.6;">@Model.HouseRules</p>
+                </div>
+            </div>
+
+            <!-- Interactive Map Location -->
+            <div class="py-4 border-bottom">
+                <h4 class="fw-bold mb-2">Where you'll be</h4>
+                <p class="text-muted mb-3"><i class="bi bi-geo-alt-fill text-danger"></i> @Model.Address, @Model.City, @Model.State, @Model.Postcode</p>
+                <div id="detailsMap" style="height:320px; border-radius:18px; overflow:hidden;" class="border"></div>
+            </div>
+
+            <!-- REVIEWS SECTION -->
+            <div class="py-5" id="reviewsSection">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <i class="bi bi-star-fill text-warning fs-4"></i>
+                    <h3 class="fw-bold mb-0">@(reviewCount > 0 ? avgRating.ToString("0.0") : "No reviews yet") · @reviewCount reviews</h3>
+                </div>
+
+                <!-- Multi-Criteria Rating Breakdown Bars -->
+                @if (reviewCount > 0)
+                {
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="fw-semibold" style="width:120px; font-size:0.88rem;">Cleanliness</span>
+                                <div class="rating-bar-track">
+                                    <div class="rating-bar-fill" style="width: @(avgCleanliness * 20)%"></div>
+                                </div>
+                                <span class="fw-bold" style="font-size:0.85rem;">@avgCleanliness</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="fw-semibold" style="width:120px; font-size:0.88rem;">Accuracy</span>
+                                <div class="rating-bar-track">
+                                    <div class="rating-bar-fill" style="width: @(avgAccuracy * 20)%"></div>
+                                </div>
+                                <span class="fw-bold" style="font-size:0.85rem;">@avgAccuracy</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="fw-semibold" style="width:120px; font-size:0.88rem;">Communication</span>
+                                <div class="rating-bar-track">
+                                    <div class="rating-bar-fill" style="width: @(avgCommunication * 20)%"></div>
+                                </div>
+                                <span class="fw-bold" style="font-size:0.85rem;">@avgCommunication</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="fw-semibold" style="width:120px; font-size:0.88rem;">Location</span>
+                                <div class="rating-bar-track">
+                                    <div class="rating-bar-fill" style="width: @(avgLocation * 20)%"></div>
+                                </div>
+                                <span class="fw-bold" style="font-size:0.85rem;">@avgLocation</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- Review Items List -->
+                <div class="row g-4">
+                    @foreach (var rev in Model.Reviews.Where(r => r.IsPublished).OrderByDescending(r => r.CreatedAt))
+                    {
+                        <div class="col-12 col-md-6">
+                            <div class="p-3 border rounded-4 h-100 bg-light-subtle">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:38px; height:38px; font-weight:700;">
+                                        @(rev.Guest?.FullName?.Length > 0 ? rev.Guest.FullName[0].ToString().ToUpper() : "G")
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-0" style="font-size:0.9rem;">@rev.Guest?.FullName</h6>
+                                        <small class="text-muted">@rev.CreatedAt.ToString("MMM yyyy")</small>
+                                    </div>
+                                </div>
+
+                                <div class="mb-2">
+                                    @for (int s = 1; s <= 5; s++)
+                                    {
+                                        <i class="bi @(s <= rev.OverallRating ? "bi-star-fill text-warning" : "bi-star text-muted")" style="font-size:0.75rem;"></i>
+                                    }
+                                </div>
+
+                                <p class="text-secondary mb-3" style="font-size:0.88rem; line-height:1.5;">@rev.Comment</p>
+
+                                @if (!string.IsNullOrEmpty(rev.HostReply))
+                                {
+                                    <div class="p-2 border-start border-3 border-danger bg-white rounded mb-2" style="font-size:0.82rem;">
+                                        <strong>Host response:</strong> @rev.HostReply
                                     </div>
                                 }
-                            </div>
-                            @if (Model.Photos.Count > 1)
-                            {
-                                <button class="carousel-control-prev" type="button" data-bs-target="#propertyCarousel" data-bs-slide="prev">
-                                    <span class="carousel-control-prev-icon"></span>
+
+                                <!-- Helpful Thumbs-Up Button -->
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill btn-helpful" data-review-id="@rev.Id" style="font-size:0.75rem;">
+                                    <i class="bi bi-hand-thumbs-up"></i> Helpful (<span class="helpful-count-@rev.Id">@rev.HelpfulVotes</span>)
                                 </button>
-                                <button class="carousel-control-next" type="button" data-bs-target="#propertyCarousel" data-bs-slide="next">
-                                    <span class="carousel-control-next-icon"></span>
-                                </button>
-                            }
-                        </div>
-                    }
-                </div>
-
-                <h5 class="fw-bold mb-2 border-bottom pb-2">Description</h5>
-                <p class="text-secondary small" style="white-space: pre-line; line-height: 1.6;">@Model.Description</p>
-
-                <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">Amenities Included</h5>
-                <div class="d-flex flex-wrap gap-2 mb-3">
-                    @if (amenities.Length > 0)
-                    {
-                        @foreach (var am in amenities)
-                        {
-                            <span class="badge bg-light text-dark border p-2 fw-medium">
-                                <i class="bi bi-check-circle-fill text-success me-1"></i> @am
-                            </span>
-                        }
-                    }
-                    else
-                    {
-                        <span class="text-muted small">No specific amenities listed.</span>
-                    }
-                </div>
-            </div>
-
-            <!-- Interactive Onscreen Floor Plan -->
-            <div class="card border-0 shadow-sm p-4 mb-4 rounded-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <h5 class="fw-bold mb-0"><i class="bi bi-diagram-3-fill text-teal me-2"></i>Interactive Floor Plan Room Selection</h5>
-                        <small class="text-muted">Click any room in the architectural floor plan to inspect rates and check availability</small>
-                    </div>
-                    <span class="badge bg-light text-muted border">Live SVG Map</span>
-                </div>
-
-                <!-- SVG Floorplan -->
-                <div class="bg-light p-3 rounded-3 text-center border">
-                    <svg viewBox="0 0 600 320" class="w-100" style="max-height: 280px; user-select: none;">
-                        <!-- Living & Common -->
-                        <rect x="10" y="10" width="360" height="150" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2" rx="4" />
-                        <text x="190" y="85" text-anchor="middle" fill="#64748b" font-weight="700" font-size="14">Living & Dining Hall (Common)</text>
-
-                        <!-- Kitchen & Yard -->
-                        <rect x="10" y="170" width="160" height="140" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2" rx="4" />
-                        <text x="90" y="245" text-anchor="middle" fill="#64748b" font-weight="600" font-size="12">Kitchen & Yard</text>
-
-                        <!-- Balcony -->
-                        <rect x="180" y="240" width="190" height="70" fill="#e0f2fe" stroke="#38bdf8" stroke-width="2" rx="4" />
-                        <text x="275" y="280" text-anchor="middle" fill="#0369a1" font-weight="600" font-size="12">Common Balcony</text>
-
-                        <!-- Room 1 (Master) -->
-                        <rect x="380" y="10" width="210" height="150" fill="#ccfbf1" stroke="#0d9488" stroke-width="3" rx="4" 
-                              class="svg-room-rect" style="cursor: pointer; transition: all 0.2s;" data-room-idx="0" />
-                        <text x="485" y="75" text-anchor="middle" fill="#0f766e" font-weight="800" font-size="14" style="pointer-events: none;">Master Bedroom</text>
-                        <text x="485" y="95" text-anchor="middle" fill="#0d9488" font-size="11" font-weight="600" style="pointer-events: none;">Private Bath • Click to Select</text>
-
-                        <!-- Room 2 (Medium) -->
-                        <rect x="380" y="170" width="210" height="140" fill="#dcfce7" stroke="#16a34a" stroke-width="2" rx="4"
-                              class="svg-room-rect" style="cursor: pointer; transition: all 0.2s;" data-room-idx="1" />
-                        <text x="485" y="235" text-anchor="middle" fill="#15803d" font-weight="800" font-size="14" style="pointer-events: none;">Medium Room</text>
-                        <text x="485" y="255" text-anchor="middle" fill="#16a34a" font-size="11" font-weight="600" style="pointer-events: none;">Balcony View • Click to Select</text>
-                    </svg>
-                </div>
-            </div>
-
-            <!-- Available Room Units List -->
-            @{
-                bool isOwnerOrAdmin = User.IsInRole("Admin") || (User.Identity?.IsAuthenticated == true && User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value == Model.OwnerId.ToString());
-            }
-            <div class="card border-0 shadow-sm p-4 rounded-4" id="roomsListSection">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4 class="fw-bold mb-0"><i class="bi bi-door-open-fill text-primary me-2"></i>Available Room Units</h4>
-                    @if (isOwnerOrAdmin)
-                    {
-                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addRoomModal" style="background:#0d9488; border-color:#0d9488;">
-                            <i class="bi bi-plus-circle me-1"></i> Add Room Unit
-                        </button>
-
-                        <!-- Add Room Modal -->
-                        <div class="modal fade" id="addRoomModal" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog">
-                                <div class="modal-content text-start">
-                                    <form asp-action="AddRoom" method="post">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="PropertyId" value="@Model.Id" />
-                                        <div class="modal-header">
-                                            <h5 class="modal-title fw-bold">Add Room Unit</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <div class="mb-3">
-                                                <label class="form-label fw-semibold small">Room Name *</label>
-                                                <input type="text" name="RoomName" class="form-control" placeholder="e.g. Master Bedroom with Bath" required />
-                                            </div>
-                                            <div class="row g-3 mb-3">
-                                                <div class="col-6">
-                                                    <label class="form-label fw-semibold small">Room Type *</label>
-                                                    <select name="RoomType" class="form-select">
-                                                        <option value="Master Room">Master Room</option>
-                                                        <option value="Medium Room">Medium Room</option>
-                                                        <option value="Single Room">Single Room</option>
-                                                        <option value="Balcony Room">Balcony Room</option>
-                                                        <option value="Studio">Studio</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-6">
-                                                    <label class="form-label fw-semibold small">Max Occupancy *</label>
-                                                    <input type="number" name="MaxPax" class="form-control" value="1" min="1" max="6" required />
-                                                </div>
-                                            </div>
-                                            <div class="row g-3 mb-3">
-                                                <div class="col-4">
-                                                    <label class="form-label fw-semibold small">Monthly Rent (RM) *</label>
-                                                    <input type="number" name="MonthlyRent" class="form-control" step="10" placeholder="600" required />
-                                                </div>
-                                                <div class="col-4">
-                                                    <label class="form-label fw-semibold small">Security Deposit (RM)</label>
-                                                    <input type="number" name="SecurityDeposit" class="form-control" step="10" placeholder="1200" />
-                                                </div>
-                                                <div class="col-4">
-                                                    <label class="form-label fw-semibold small">Utility Deposit (RM)</label>
-                                                    <input type="number" name="UtilityDeposit" class="form-control" step="10" placeholder="300" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                            <button type="submit" class="btn btn-primary" style="background:#0d9488; border-color:#0d9488;">Save Room</button>
-                                        </div>
-                                    </form>
-                                </div>
                             </div>
                         </div>
                     }
                 </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: INTERACTIVE RESERVATION WIDGET -->
+        <div class="col-12 col-lg-4">
+            <div class="booking-widget-card">
                 
-                @if (!Model.RoomUnits.Any())
-                {
-                    <p class="text-muted">No room units listed yet for this property.</p>
-                }
-                else
-                {
-                    <div class="list-group list-group-flush gap-3">
-                        @for (int idx = 0; idx < Model.RoomUnits.Count; idx++)
-                        {
-                            var room = Model.RoomUnits[idx];
-                            <div class="list-group-item p-3 border rounded-3 room-unit-card @(room.IsAvailable ? "" : "bg-light opacity-75")" id="roomCard-@idx">
-                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-                                    <div>
-                                        <div class="d-flex align-items-center gap-2 mb-1">
-                                            <h5 class="mb-0 fw-bold">@room.RoomName</h5>
-                                            <span class="badge bg-secondary-subtle text-secondary border">@room.RoomType</span>
-                                            @if (room.IsAvailable)
-                                            {
-                                                <span class="badge bg-success">Available</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-danger">Occupied</span>
-                                            }
-                                        </div>
-                                        <div class="text-muted small">
-                                            <span><i class="bi bi-people me-1"></i>Max @room.MaxPax pax</span> | 
-                                            <span>Security Dep: RM @room.SecurityDeposit.ToString("N0")</span> | 
-                                            <span>Utility Dep: RM @room.UtilityDeposit.ToString("N0")</span>
-                                        </div>
-                                    </div>
-                                    <div class="text-md-end">
-                                        <div class="fw-bold text-success fs-4 mb-2">
-                                            RM @room.MonthlyRent.ToString("N0") <small class="text-muted fs-6">/mo</small>
-                                        </div>
-
-                                        @if (room.IsAvailable)
-                                        {
-                                            @if (isTenant)
-                                            {
-                                                <div class="d-flex gap-2">
-                                                    <!-- Schedule Viewing Pass Modal Button -->
-                                                    <button type="button" class="btn btn-outline-primary btn-sm px-2" data-bs-toggle="modal" data-bs-target="#viewingModal-@room.Id">
-                                                        <i class="bi bi-qr-code me-1"></i> Viewing Pass
-                                                    </button>
-
-                                                    <!-- Apply Lease Modal Button -->
-                                                    <button type="button" class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#applyLeaseModal-@room.Id" style="background:#0d9488; border-color:#0d9488;">
-                                                        Apply Lease <i class="bi bi-chevron-right ms-1"></i>
-                                                    </button>
-                                                </div>
-
-                                                <!-- 1. Schedule Viewing Modal -->
-                                                <div class="modal fade" id="viewingModal-@room.Id" tabindex="-1" aria-hidden="true">
-                                                    <div class="modal-dialog">
-                                                        <div class="modal-content text-start">
-                                                            <form asp-controller="Booking" asp-action="ScheduleViewing" method="post">
-                                                                @Html.AntiForgeryToken()
-                                                                <input type="hidden" name="roomUnitId" value="@room.Id" />
-                                                                <div class="modal-header">
-                                                                    <h5 class="modal-title fw-bold">Schedule Physical Viewing Pass</h5>
-                                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                                </div>
-                                                                <div class="modal-body">
-                                                                    <div class="alert alert-info py-2 small">
-                                                                        <strong>Room:</strong> @room.RoomName<br />
-                                                                        <strong>Premises:</strong> @Model.Title
-                                                                    </div>
-                                                                    <div class="mb-3">
-                                                                        <label class="form-label fw-semibold">Preferred Date & Time</label>
-                                                                        <input type="datetime-local" name="appointmentDateTime" class="form-control" 
-                                                                               value="@DateTime.Today.AddDays(2).AddHours(14).ToString("yyyy-MM-ddTHH:mm")" required />
-                                                                        <small class="text-muted">Pass will be encoded with a digital security QR code.</small>
-                                                                    </div>
-                                                                    <div class="mb-3">
-                                                                        <label class="form-label fw-semibold">Remarks for Landlord</label>
-                                                                        <textarea name="remarks" class="form-control" rows="2" placeholder="e.g. TAR UMT 2nd-year student, arriving via LRT"></textarea>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="modal-footer">
-                                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                                    <button type="submit" class="btn btn-primary" style="background:#0d9488; border-color:#0d9488;">Generate QR Pass</button>
-                                                                </div>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- 2. Apply Lease Modal -->
-                                                <div class="modal fade" id="applyLeaseModal-@room.Id" tabindex="-1" aria-hidden="true">
-                                                    <div class="modal-dialog">
-                                                        <div class="modal-content text-start">
-                                                            <form asp-controller="Booking" asp-action="ApplyLease" method="post">
-                                                                @Html.AntiForgeryToken()
-                                                                <input type="hidden" name="RoomUnitId" value="@room.Id" />
-                                                                <div class="modal-header">
-                                                                    <h5 class="modal-title fw-bold">Apply Tenancy Lease</h5>
-                                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                                </div>
-                                                                <div class="modal-body">
-                                                                    <div class="alert alert-light border py-2 small mb-3">
-                                                                        <div class="d-flex justify-content-between">
-                                                                            <span>Monthly Rental:</span>
-                                                                            <strong>RM @room.MonthlyRent.ToString("N0")</strong>
-                                                                        </div>
-                                                                        <div class="d-flex justify-content-between">
-                                                                            <span>Security Deposit:</span>
-                                                                            <span>RM @room.SecurityDeposit.ToString("N0")</span>
-                                                                        </div>
-                                                                        <div class="d-flex justify-content-between">
-                                                                            <span>Utility Deposit:</span>
-                                                                            <span>RM @room.UtilityDeposit.ToString("N0")</span>
-                                                                        </div>
-                                                                        <hr class="my-1" />
-                                                                        <div class="d-flex justify-content-between text-success fw-bold">
-                                                                            <span>Initial Deposit Total:</span>
-                                                                            <span>RM @((room.SecurityDeposit + room.UtilityDeposit + room.MonthlyRent).ToString("N0"))</span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="mb-3">
-                                                                        <label class="form-label fw-semibold">Target Move-in Date *</label>
-                                                                        <input type="date" name="StartDate" class="form-control" value="@DateTime.Today.AddDays(7).ToString("yyyy-MM-dd")" required min="@DateTime.Today.ToString("yyyy-MM-dd")" />
-                                                                    </div>
-                                                                    <div class="mb-3">
-                                                                        <label class="form-label fw-semibold">Rental Tenure (Months) *</label>
-                                                                        <select name="DurationMonths" class="form-select">
-                                                                            <option value="6">6 Months</option>
-                                                                            <option value="12" selected>12 Months (1 Year)</option>
-                                                                            <option value="24">24 Months (2 Years)</option>
-                                                                        </select>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="modal-footer">
-                                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                                    <button type="submit" class="btn btn-primary" style="background:#0d9488; border-color:#0d9488;">Submit Lease Application</button>
-                                                                </div>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            }
-                                            else if (User.Identity?.IsAuthenticated == true && !isOwnerOrAdmin)
-                                            {
-                                                <span class="badge bg-light text-muted border p-2">Tenants only</span>
-                                            }
-                                            else if (isGuest)
-                                            {
-                                                <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@Context.Request.Path" class="btn btn-outline-primary btn-sm">
-                                                    Log In to Apply
-                                                </a>
-                                            }
-                                        }
-
-                                        @if (isOwnerOrAdmin)
-                                        {
-                                            <div class="mt-2 d-flex justify-content-end gap-1">
-                                                <form asp-action="ToggleRoomAvailability" method="post" class="d-inline">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="id" value="@room.Id" />
-                                                    <button type="submit" class="btn btn-sm @(room.IsAvailable ? "btn-outline-warning" : "btn-outline-success")">
-                                                        <i class="bi @(room.IsAvailable ? "bi-slash-circle" : "bi-check-circle")"></i>
-                                                        @(room.IsAvailable ? "Mark Occupied" : "Mark Available")
-                                                    </button>
-                                                </form>
-                                                <form asp-action="DeleteRoom" method="post" class="d-inline" onsubmit="return confirm('Delete this room unit?');">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="id" value="@room.Id" />
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        }
+                <div class="d-flex justify-content-between align-items-baseline mb-3">
+                    <div>
+                        <span class="fs-3 fw-bolder text-dark" data-base-price="@Model.BaseNightlyRate">RM @Model.BaseNightlyRate.ToString("N0")</span>
+                        <span class="text-muted"> / night</span>
                     </div>
-                }
-            </div>
-        </div>
-
-        <!-- Right Column: Host & Location -->
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm p-4 mb-4 rounded-4">
-                <h5 class="fw-bold mb-3 border-bottom pb-2">Property Host</h5>
-                @if (Model.Owner != null)
-                {
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px; font-size: 1.25rem; background:#0d9488;">
-                            <i class="bi bi-person"></i>
-                        </div>
-                        <div>
-                            <h6 class="fw-bold mb-0">@Model.Owner.FullName</h6>
-                            <small class="text-success fw-semibold"><i class="bi bi-patch-check-fill me-1"></i>Verified Host</small>
-                        </div>
+                    <div class="text-end">
+                        <span class="fw-bold"><i class="bi bi-star-fill text-warning"></i> @(reviewCount > 0 ? avgRating.ToString("0.0") : "New")</span>
+                        <span class="text-muted" style="font-size:0.82rem;">(@reviewCount reviews)</span>
                     </div>
-                    <p class="small text-muted mb-2"><i class="bi bi-telephone-fill me-2 text-primary"></i>@Model.Owner.PhoneNumber</p>
-                    <p class="small text-muted"><i class="bi bi-envelope-fill me-2 text-primary"></i>@Model.Owner.Email</p>
-                }
-            </div>
-
-            <div class="card border-0 shadow-sm p-4 rounded-4">
-                <h5 class="fw-bold mb-2">Location Coordinates</h5>
-                <p class="small text-muted mb-3"><i class="bi bi-geo-alt me-1 text-danger"></i> @Model.City, @Model.State (@Model.Postcode)</p>
-                <div class="rounded-3 bg-light p-3 border text-center text-muted small">
-                    <i class="bi bi-compass display-6 d-block mb-2 text-secondary"></i>
-                    Latitude: @Model.Latitude.ToString("F4") <br />
-                    Longitude: @Model.Longitude.ToString("F4")
                 </div>
+
+                <!-- DATE PICKER & GUESTS INPUTS -->
+                <form id="reservationForm" method="get" asp-controller="Booking" asp-action="Checkout">
+                    <input type="hidden" name="propertyId" value="@Model.Id" />
+
+                    <div class="border rounded-3 p-2 mb-3 bg-light">
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="fw-bold text-uppercase" style="font-size:0.65rem;">Check-in</label>
+                                <input type="date" id="widgetCheckIn" name="checkIn" class="form-control form-control-sm border-0 bg-transparent fw-semibold" value="@ViewBag.CheckIn" />
+                            </div>
+                            <div class="col-6 border-start">
+                                <label class="fw-bold text-uppercase" style="font-size:0.65rem;">Check-out</label>
+                                <input type="date" id="widgetCheckOut" name="checkOut" class="form-control form-control-sm border-0 bg-transparent fw-semibold" value="@ViewBag.CheckOut" />
+                            </div>
+                        </div>
+                        <div class="border-top pt-2">
+                            <label class="fw-bold text-uppercase" style="font-size:0.65rem;">Guests</label>
+                            <select id="widgetGuests" name="guests" class="form-select form-select-sm border-0 bg-transparent fw-semibold">
+                                @for (int g = 1; g <= Model.MaxGuests; g++)
+                                {
+                                    <option value="@g" selected="@(g == ViewBag.Guests)">@g guest@(g > 1 ? "s" : "")</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Availability Alert Status -->
+                    <div id="availabilityAlert" class="alert alert-danger py-2 px-3 d-none mb-3" style="font-size:0.85rem; border-radius:10px;">
+                        <i class="bi bi-exclamation-circle-fill me-1"></i> <span id="availabilityMsg">Dates unavailable</span>
+                    </div>
+
+                    <!-- Reserve Now Button -->
+                    <button type="submit" id="btnReserve" class="btn btn-airbnb w-100 py-3 fs-5 fw-bold shadow">
+                        Reserve Now
+                    </button>
+                    <p class="text-center text-muted mt-2 mb-3" style="font-size:0.8rem;">You won't be charged yet</p>
+
+                    <!-- AUTOMATED PRICE BREAKDOWN -->
+                    <div id="priceBreakdownContainer" class="border-top pt-3">
+                        <div class="d-flex justify-content-between mb-2" style="font-size:0.9rem;">
+                            <span class="text-muted" id="nightCalcLabel">RM @Model.BaseNightlyRate × @ViewBag.Nights nights</span>
+                            <span class="fw-semibold" id="subtotalDisplay" data-base-price="@ViewBag.Subtotal">RM @ViewBag.Subtotal.ToString("N0")</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2" style="font-size:0.9rem;">
+                            <span class="text-muted">Cleaning fee</span>
+                            <span class="fw-semibold" id="cleaningDisplay" data-base-price="@ViewBag.CleaningFee">RM @ViewBag.CleaningFee.ToString("N0")</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2" style="font-size:0.9rem;">
+                            <span class="text-muted">HomeNest service fee (10%)</span>
+                            <span class="fw-semibold" id="serviceDisplay" data-base-price="@ViewBag.ServiceFee">RM @ViewBag.ServiceFee.ToString("N0")</span>
+                        </div>
+                        <div class="d-flex justify-content-between pt-3 border-top fw-bold fs-5 text-dark">
+                            <span>Total before taxes</span>
+                            <span id="totalDisplay" class="text-danger" data-base-price="@ViewBag.Total">RM @ViewBag.Total.ToString("N0")</span>
+                        </div>
+                    </div>
+                </form>
+
             </div>
         </div>
+
     </div>
 </div>
 
 @section Scripts {
     <script>
-        // Interactive SVG floor plan room selection
-        document.querySelectorAll(".svg-room-rect").forEach(rect => {
-            rect.addEventListener("click", function () {
-                const idx = this.getAttribute("data-room-idx");
-                const card = document.getElementById("roomCard-" + idx);
-                if (card) {
-                    document.querySelectorAll(".room-unit-card").forEach(c => c.style.outline = "none");
-                    card.style.outline = "3px solid #0d9488";
-                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // 1. Details Map
+        const map = L.map('detailsMap').setView([@Model.Latitude, @Model.Longitude], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        L.circle([@Model.Latitude, @Model.Longitude], {
+            color: '#ff385c',
+            fillColor: '#ff385c',
+            fillOpacity: 0.25,
+            radius: 350
+        }).addTo(map);
+
+        L.marker([@Model.Latitude, @Model.Longitude])
+            .bindPopup("<b>@Html.Raw(Model.Title.Replace("\"", "\\\""))</b><br>@Model.Address")
+            .addTo(map);
+
+        // 2. Real-Time Price Breakdown & Availability Checker
+        const propId = @Model.Id;
+        const checkInInput = document.getElementById('widgetCheckIn');
+        const checkOutInput = document.getElementById('widgetCheckOut');
+        const guestsInput = document.getElementById('widgetGuests');
+        const btnReserve = document.getElementById('btnReserve');
+        const alertBox = document.getElementById('availabilityAlert');
+        const alertMsg = document.getElementById('availabilityMsg');
+
+        function updatePriceCalculator() {
+            const cIn = checkInInput.value;
+            const cOut = checkOutInput.value;
+            const g = guestsInput.value;
+
+            if (!cIn || !cOut || cOut <= cIn) {
+                alertBox.classList.remove('d-none');
+                alertMsg.textContent = 'Check-out date must be after check-in date.';
+                btnReserve.disabled = true;
+                return;
+            }
+
+            $.ajax({
+                url: '/Property/CheckAvailability',
+                type: 'GET',
+                data: { propertyId: propId, checkIn: cIn, checkOut: cOut, guests: g },
+                success: function(res) {
+                    if (res.available) {
+                        alertBox.classList.add('d-none');
+                        btnReserve.disabled = false;
+
+                        $('#nightCalcLabel').text(`RM ${res.subtotal / res.nights} × ${res.nights} nights`);
+                        $('#subtotalDisplay').text(`RM ${Math.round(res.subtotal)}`).attr('data-base-price', res.subtotal);
+                        $('#cleaningDisplay').text(`RM ${Math.round(res.cleaningFee)}`).attr('data-base-price', res.cleaningFee);
+                        $('#serviceDisplay').text(`RM ${Math.round(res.serviceFee)}`).attr('data-base-price', res.serviceFee);
+                        $('#totalDisplay').text(`RM ${Math.round(res.total)}`).attr('data-base-price', res.total);
+                    } else {
+                        alertBox.classList.remove('d-none');
+                        alertMsg.textContent = res.message || 'These dates are booked or unavailable.';
+                        btnReserve.disabled = true;
+                    }
                 }
             });
-            rect.addEventListener("mouseenter", function () {
-                this.style.opacity = "0.75";
+        }
+
+        checkInInput.addEventListener('change', updatePriceCalculator);
+        checkOutInput.addEventListener('change', updatePriceCalculator);
+        guestsInput.addEventListener('change', updatePriceCalculator);
+
+        // 3. Wishlist Toggle Button
+        $('.btn-wishlist-toggle').on('click', function() {
+            const pId = $(this).data('property-id');
+            const icon = $('#wishlistIcon');
+            const txt = $('#wishlistText');
+
+            $.ajax({
+                url: '/Property/ToggleWishlist',
+                type: 'POST',
+                data: { propertyId: pId },
+                success: function(res) {
+                    if (res.success) {
+                        if (res.isSaved) {
+                            icon.removeClass('bi-heart').addClass('bi-heart-fill text-danger');
+                            txt.textContent = 'Saved';
+                        } else {
+                            icon.removeClass('bi-heart-fill text-danger').addClass('bi-heart');
+                            txt.textContent = 'Save';
+                        }
+                    }
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/Account/Login?returnUrl=/Property/Details/' + pId;
+                    }
+                }
             });
-            rect.addEventListener("mouseleave", function () {
-                this.style.opacity = "1";
+        });
+
+        // 4. Helpful Vote Button
+        $('.btn-helpful').on('click', function() {
+            const btn = $(this);
+            const reviewId = btn.data('review-id');
+
+            $.ajax({
+                url: '/Booking/VoteReviewHelpful',
+                type: 'POST',
+                data: { reviewId: reviewId },
+                success: function(res) {
+                    if (res.success) {
+                        $(`.helpful-count-${reviewId}`).text(res.helpfulCount);
+                        btn.addClass('btn-secondary text-white').removeClass('btn-outline-secondary');
+                    }
+                }
             });
         });
     </script>

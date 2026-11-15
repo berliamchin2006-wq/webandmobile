@@ -1,267 +1,443 @@
 @model List<HomeNest.Models.Property>
-
 @{
-    ViewData["Title"] = "Browse Rentals";
-    decimal maxRent = ViewBag.MaxRent != null ? (decimal)ViewBag.MaxRent : 2500m;
+    ViewData["Title"] = "Find Holiday Homes & Vacation Rentals";
     string[] selectedAmenities = ViewBag.SelectedAmenities as string[] ?? Array.Empty<string>();
-    int totalCount = ViewBag.TotalProperties ?? Model.Count;
-    int matchCount = ViewBag.MatchingCount ?? Model.Count;
-
-    // Serialize model for Leaflet map markers
-    var mapData = Model.Select(p => new
-    {
-        id = p.Id,
-        title = p.Title,
-        propertyType = p.PropertyType,
-        address = p.Address,
-        city = p.City,
-        lat = p.Latitude,
-        lng = p.Longitude,
-        cover = p.Photos.FirstOrDefault(x => x.IsCover)?.FileName ?? p.Photos.FirstOrDefault()?.FileName ?? "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800",
-        minRent = p.RoomUnits.Any() ? p.RoomUnits.Min(r => r.MonthlyRent) : 0m,
-        available = p.RoomUnits.Count(r => r.IsAvailable)
-    }).ToList();
 }
 
-<div class="mb-5">
-    <!-- Hero Section Banner -->
-    <div class="hero-banner p-4 p-md-5 mb-4 position-relative">
-        <div class="col-xl-9 col-lg-10 px-0 mb-4">
-            <div class="mb-3">
-                <span class="hero-verified-badge">
-                    <i class="bi bi-shield-check text-success"></i> Verified Landlords & Instant Room Booking
-                </span>
-            </div>
-            <h1 class="display-6 fw-bold mb-2 text-white" style="letter-spacing: -0.02em;">
-                Find Your Ideal Student Room or Whole House in Malaysia
-            </h1>
-            <p class="mb-0 text-white-50" style="font-size: 1.05rem;">
-                Interactive floor-plan room selection, QR viewing passes, transparent deposit calculation, and instant e-receipts.
-            </p>
-        </div>
+@section Styles {
+    <style>
+        .search-hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border-radius: 24px;
+            padding: 32px 28px;
+            color: white;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+        }
 
-        <!-- Floating White Search Card -->
-        <div class="search-card-floating">
-            <form method="get" asp-action="Catalog" id="searchFilterForm">
-                <div class="row g-3 align-items-center mb-3">
-                    <!-- Location / Keyword -->
-                    <div class="col-lg-4 col-md-6">
-                        <label class="search-label-micro">Search Location / Condo / University</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0 text-muted">
-                                <i class="bi bi-search"></i>
-                            </span>
-                            <input type="text" name="keyword" class="form-control bg-light border-start-0" 
-                                   placeholder="e.g. Setapak, TAR UMT, Semenyih, Sunway..." 
-                                   value="@ViewBag.Keyword" />
-                        </div>
-                    </div>
+        .search-box {
+            background: white;
+            border-radius: 18px;
+            padding: 18px 24px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            color: #222;
+        }
 
-                    <!-- Property Type -->
-                    <div class="col-lg-3 col-md-6">
-                        <label class="search-label-micro">Property Type</label>
-                        <select name="propertyType" class="form-select bg-light">
-                            <option value="">All Property Types</option>
-                            <option value="Condominium" selected="@(ViewBag.PropertyType == "Condominium")">Condominium</option>
-                            <option value="Apartment" selected="@(ViewBag.PropertyType == "Apartment")">Apartment</option>
-                            <option value="Landed House" selected="@(ViewBag.PropertyType == "Landed House")">Landed House</option>
-                            <option value="Service Residence" selected="@(ViewBag.PropertyType == "Service Residence")">Service Residence</option>
-                        </select>
-                    </div>
+        .search-input-group {
+            border-right: 1px solid #ebebeb;
+            padding: 0 16px;
+        }
+        .search-input-group:last-child {
+            border-right: none;
+        }
 
-                    <!-- Max Room Rent Slider -->
-                    <div class="col-lg-3 col-md-6">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <label class="search-label-micro mb-1">Max Room Rent</label>
-                            <span class="fw-bold" style="color: #0d9488; font-size: 0.85rem;" id="rentDisplay">
-                                RM @maxRent.ToString("N0")
-                            </span>
-                        </div>
-                        <input type="range" class="form-range custom-teal-range" 
-                               name="maxRent" id="maxRentSlider" 
-                               min="300" max="3000" step="50" 
-                               value="@maxRent" />
-                    </div>
+        .search-label {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #222;
+            margin-bottom: 2px;
+            display: block;
+        }
 
-                    <!-- Sort By -->
-                    <div class="col-lg-2 col-md-6">
-                        <label class="search-label-micro">Sort By</label>
-                        <select name="sort" class="form-select bg-light">
-                            <option value="featured" selected="@(ViewBag.Sort == "featured")">Featured & Verified First</option>
-                            <option value="price_asc" selected="@(ViewBag.Sort == "price_asc")">Price: Low to High</option>
-                            <option value="price_desc" selected="@(ViewBag.Sort == "price_desc")">Price: High to Low</option>
-                            <option value="newest" selected="@(ViewBag.Sort == "newest")">Newest</option>
-                        </select>
-                    </div>
-                </div>
+        .search-input {
+            border: none;
+            outline: none;
+            font-size: 0.92rem;
+            width: 100%;
+            background: transparent;
+            color: #444;
+            font-weight: 500;
+        }
 
-                <!-- Bottom Amenities & Action Row -->
-                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center pt-2 border-top gap-3">
-                    <div class="d-flex flex-wrap align-items-center">
-                        <span class="search-label-micro me-2 mb-0 d-inline-block">≈ Amenities:</span>
-                        <label class="amenity-chip-check">
-                            <input type="checkbox" name="amenities" value="WiFi" @(selectedAmenities.Contains("WiFi") ? "checked" : "") />
-                            <span>📶 High-Speed WiFi</span>
-                        </label>
-                        <label class="amenity-chip-check">
-                            <input type="checkbox" name="amenities" value="AirCond" @(selectedAmenities.Contains("AirCond") ? "checked" : "") />
-                            <span>❄️ Air-Cond</span>
-                        </label>
-                        <label class="amenity-chip-check">
-                            <input type="checkbox" name="amenities" value="NearLRT" @(selectedAmenities.Contains("NearLRT") ? "checked" : "") />
-                            <span>🚇 Near LRT/MRT</span>
-                        </label>
-                        <label class="amenity-chip-check">
-                            <input type="checkbox" name="amenities" value="CookingAllowed" @(selectedAmenities.Contains("CookingAllowed") ? "checked" : "") />
-                            <span>🍳 Cooking Allowed</span>
-                        </label>
-                    </div>
+        /* Leaflet custom map markers */
+        .custom-price-pin {
+            background: white;
+            color: #222;
+            font-weight: 800;
+            font-size: 0.85rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            border: 1px solid rgba(0,0,0,0.1);
+            text-align: center;
+            white-space: nowrap;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .custom-price-pin:hover {
+            background: #222;
+            color: white;
+            transform: scale(1.1);
+        }
 
-                    <div class="d-flex align-items-center gap-3 ms-md-auto">
-                        <span class="text-muted small fw-semibold" id="showingCountText">
-                            Showing @matchCount of @totalCount properties
-                        </span>
-                        <button type="button" class="btn-toggle-map" id="toggleMapBtn">
-                            <i class="bi bi-map-fill me-1"></i> Toggle Interactive Map
-                        </button>
-                        <button type="submit" class="btn btn-primary btn-sm px-3 fw-bold text-white" style="background-color: #0d9488; border-color: #0d9488; border-radius: 50rem;">
-                            Filter
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
+        .area-chip {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.25);
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .area-chip:hover {
+            background: white;
+            color: #0f172a;
+        }
 
-    <!-- Interactive Leaflet Map Section -->
-    <div class="card border-0 shadow-sm p-4 mb-4 rounded-4" id="mapSection">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+        #mapContainer {
+            height: 380px;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            margin-bottom: 28px;
+            display: block;
+        }
+    </style>
+}
+
+<div class="container-fluid px-lg-5 pt-3">
+    
+    <!-- SEARCH HERO BAR -->
+    <div class="search-hero">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
             <div>
-                <h5 class="fw-bold mb-1" style="color: #0f172a;">
-                    <i class="bi bi-geo-alt-fill text-danger me-1"></i> Interactive Property Location Map (Leaflet.js Integration)
-                </h5>
-                <p class="text-muted small mb-0">
-                    Click any marker on the map to inspect room availability and open the interactive floor plan.
+                <span class="badge bg-danger bg-opacity-75 rounded-pill px-3 py-1 mb-2">
+                    <i class="bi bi-shield-check"></i> TAR UMT BMIT2023 Showcase Platform
+                </span>
+                <h2 class="fw-bold mb-1">Find Vacation Homes & Staycations in Malaysia</h2>
+                <p class="text-white-50 mb-0" style="font-size:0.95rem;">
+                    Instant booking confirmation, verified superhosts, real-time availability calendar, and QR check-in passes.
                 </p>
             </div>
-            <!-- Quick Filter Chips -->
-            <div class="d-flex flex-wrap gap-2">
-                <button type="button" class="quick-filter-chip active" data-filter="all">All Areas</button>
-                <button type="button" class="quick-filter-chip" data-filter="setapak" data-lat="3.2015" data-lng="101.7168">Setapak / KL</button>
-                <button type="button" class="quick-filter-chip" data-filter="semenyih" data-lat="2.9450" data-lng="101.8732">Semenyih</button>
-                <button type="button" class="quick-filter-chip" data-filter="sunway" data-lat="3.0645" data-lng="101.6035">Subang / Sunway</button>
+            <div class="mt-3 mt-md-0 d-flex gap-2">
+                <button type="button" id="btnToggleMap" class="btn btn-outline-light rounded-pill px-3">
+                    <i class="bi bi-map"></i> <span id="mapToggleText">Hide Map</span>
+                </button>
             </div>
         </div>
 
-        <div id="propertyMap" style="height: 380px; width: 100%; border-radius: 14px; border: 1px solid #e2e8f0; z-index: 1;"></div>
+        <!-- MAIN SEARCH FORM -->
+        <form id="searchForm" class="search-box">
+            <div class="row g-3 align-items-center">
+                
+                <!-- Where -->
+                <div class="col-12 col-md-3 search-input-group">
+                    <label class="search-label"><i class="bi bi-geo-alt"></i> Where</label>
+                    <input type="text" name="keyword" id="inputKeyword" class="search-input" 
+                           placeholder="KLCC, Penang, Cameron, Sunway..." value="@ViewBag.Keyword" />
+                </div>
+
+                <!-- Check-in & Check-out Dates -->
+                <div class="col-6 col-md-2 search-input-group">
+                    <label class="search-label"><i class="bi bi-calendar-check"></i> Check In</label>
+                    <input type="date" name="checkIn" id="inputCheckIn" class="search-input" value="@ViewBag.CheckIn" />
+                </div>
+
+                <div class="col-6 col-md-2 search-input-group">
+                    <label class="search-label"><i class="bi bi-calendar-x"></i> Check Out</label>
+                    <input type="date" name="checkOut" id="inputCheckOut" class="search-input" value="@ViewBag.CheckOut" />
+                </div>
+
+                <!-- Guests -->
+                <div class="col-6 col-md-2 search-input-group">
+                    <label class="search-label"><i class="bi bi-people"></i> Who</label>
+                    <select name="guests" id="selectGuests" class="search-input">
+                        <option value="1" selected="@(ViewBag.Guests == 1)">1 Guest</option>
+                        <option value="2" selected="@(ViewBag.Guests == 2)">2 Guests</option>
+                        <option value="4" selected="@(ViewBag.Guests == 4)">4+ Guests</option>
+                        <option value="6" selected="@(ViewBag.Guests == 6)">6+ Guests</option>
+                        <option value="8" selected="@(ViewBag.Guests == 8)">8+ Large Group</option>
+                    </select>
+                </div>
+
+                <!-- Property Type & Submit -->
+                <div class="col-6 col-md-3 d-flex align-items-center gap-2">
+                    <div class="flex-grow-1">
+                        <label class="search-label"><i class="bi bi-building"></i> Type</label>
+                        <select name="propertyType" id="selectType" class="search-input">
+                            <option value="All">All Types</option>
+                            <option value="Condominium" selected="@(ViewBag.PropertyType == "Condominium")">Condo</option>
+                            <option value="Villa" selected="@(ViewBag.PropertyType == "Villa")">Villa</option>
+                            <option value="Townhouse" selected="@(ViewBag.PropertyType == "Townhouse")">Townhouse</option>
+                            <option value="Chalet" selected="@(ViewBag.PropertyType == "Chalet")">Chalet</option>
+                            <option value="Studio" selected="@(ViewBag.PropertyType == "Studio")">Studio</option>
+                        </select>
+                    </div>
+                    <button type="button" id="btnLiveSearch" class="btn btn-airbnb rounded-circle p-3 d-flex align-items-center justify-content-center shadow-sm" style="width:48px; height:48px;">
+                        <i class="bi bi-search fs-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Expandable Amenities & Price Slider Filter Bar -->
+            <div class="row g-3 align-items-center mt-2 pt-2 border-top">
+                <div class="col-md-5">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="search-label mb-0"><i class="bi bi-sliders"></i> Nightly Price Range</span>
+                        <span class="fw-bold text-dark" style="font-size:0.85rem;" id="priceDisplay">Up to RM @ViewBag.MaxPrice</span>
+                    </div>
+                    <input type="range" class="form-range" id="priceRange" min="50" max="1500" step="25" value="@ViewBag.MaxPrice" />
+                    <input type="hidden" name="maxPrice" id="inputMaxPrice" value="@ViewBag.MaxPrice" />
+                </div>
+
+                <div class="col-md-5">
+                    <span class="search-label mb-1"><i class="bi bi-check2-square"></i> Popular Amenities</span>
+                    <div class="d-flex flex-wrap gap-2" style="font-size:0.8rem;">
+                        <label class="form-check-label me-2">
+                            <input type="checkbox" name="amenities" value="WiFi" class="form-check-input amenity-checkbox" @(selectedAmenities.Contains("WiFi") ? "checked" : "")> WiFi
+                        </label>
+                        <label class="form-check-label me-2">
+                            <input type="checkbox" name="amenities" value="AirCond" class="form-check-input amenity-checkbox" @(selectedAmenities.Contains("AirCond") ? "checked" : "")> Air-Cond
+                        </label>
+                        <label class="form-check-label me-2">
+                            <input type="checkbox" name="amenities" value="Pool" class="form-check-input amenity-checkbox" @(selectedAmenities.Contains("Pool") ? "checked" : "")> Pool
+                        </label>
+                        <label class="form-check-label me-2">
+                            <input type="checkbox" name="amenities" value="Kitchen" class="form-check-input amenity-checkbox" @(selectedAmenities.Contains("Kitchen") ? "checked" : "")> Kitchen
+                        </label>
+                        <label class="form-check-label me-2">
+                            <input type="checkbox" name="amenities" value="FreeParking" class="form-check-input amenity-checkbox" @(selectedAmenities.Contains("FreeParking") ? "checked" : "")> Free Parking
+                        </label>
+                        <label class="form-check-label">
+                            <input type="checkbox" name="amenities" value="SelfCheckIn" class="form-check-input amenity-checkbox" @(selectedAmenities.Contains("SelfCheckIn") ? "checked" : "")> Self Check-In
+                        </label>
+                    </div>
+                </div>
+
+                <div class="col-md-2 text-md-end">
+                    <span class="search-label mb-1"><i class="bi bi-arrow-down-up"></i> Sort</span>
+                    <select name="sort" id="selectSort" class="form-select form-select-sm" style="border-radius:10px;">
+                        <option value="featured" selected="@(ViewBag.Sort == "featured")">Featured</option>
+                        <option value="price_asc" selected="@(ViewBag.Sort == "price_asc")">Price: Low to High</option>
+                        <option value="price_desc" selected="@(ViewBag.Sort == "price_desc")">Price: High to Low</option>
+                        <option value="rating" selected="@(ViewBag.Sort == "rating")">Top Rated</option>
+                        <option value="newest" selected="@(ViewBag.Sort == "newest")">Newest</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+
+        <!-- Quick Fly-to Area Chips -->
+        <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-2">
+            <span class="text-white-50" style="font-size:0.82rem;"><i class="bi bi-lightning-charge"></i> Quick Fly To:</span>
+            <span class="area-chip" data-lat="3.1579" data-lng="101.7116" data-zoom="13">📍 Kuala Lumpur (KLCC)</span>
+            <span class="area-chip" data-lat="5.4150" data-lng="100.3364" data-zoom="13">📍 Penang (George Town)</span>
+            <span class="area-chip" data-lat="4.4721" data-lng="101.3756" data-zoom="12">📍 Cameron Highlands</span>
+            <span class="area-chip" data-lat="3.0673" data-lng="101.6038" data-zoom="14">📍 Sunway Lagoon</span>
+            <span class="area-chip" data-lat="6.2929" data-lng="99.7289" data-zoom="12">📍 Langkawi</span>
+            <span class="area-chip" data-lat="2.1950" data-lng="102.2486" data-zoom="14">📍 Melaka Jonker</span>
+        </div>
     </div>
 
-    <!-- Properties Grid Section -->
-    <div id="propertyGridSection">
+    <!-- LEAFLET INTERACTIVE MAP WITH PRICE MARKERS -->
+    <div id="mapContainer"></div>
+
+    <!-- CATALOG GRID HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold mb-0">
+            Available Properties (<span id="countDisplay">@ViewBag.MatchingCount</span>)
+        </h4>
+        <div id="loadingSpinner" class="spinner-border spinner-border-sm text-danger d-none" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- DYNAMIC AJAX RESULTS CONTAINER -->
+    <div class="row g-4" id="catalogGrid">
         @await Html.PartialAsync("_PropertyCatalogGrid", Model)
     </div>
 </div>
 
 @section Scripts {
     <script>
-        // 1. Max rent slider display listener
-        const slider = document.getElementById("maxRentSlider");
-        const display = document.getElementById("rentDisplay");
-        if (slider && display) {
-            slider.addEventListener("input", function () {
-                display.textContent = "RM " + Number(this.value).toLocaleString('en-US');
-            });
-        }
+        // Data for Interactive Map Price Pins
+        const mapProperties = [
+            @foreach (var p in Model)
+            {
+                var cover = p.Photos.FirstOrDefault(ph => ph.IsCover)?.FileName ?? p.Photos.FirstOrDefault()?.FileName ?? "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80";
+                <text>
+                {
+                    id: @p.Id,
+                    title: "@Html.Raw(p.Title.Replace("\"", "\\\""))",
+                    price: @p.BaseNightlyRate,
+                    lat: @p.Latitude,
+                    lng: @p.Longitude,
+                    city: "@p.City",
+                    cover: "@cover",
+                    type: "@p.PropertyType"
+                },
+                </text>
+            }
+        ];
 
-        // 2. Map Toggle
-        const toggleBtn = document.getElementById("toggleMapBtn");
-        const mapSection = document.getElementById("mapSection");
-        if (toggleBtn && mapSection) {
-            toggleBtn.addEventListener("click", function () {
-                if (mapSection.style.display === "none") {
-                    mapSection.style.display = "block";
-                    setTimeout(() => { map.invalidateSize(); }, 200);
-                } else {
-                    mapSection.style.display = "none";
-                }
-            });
-        }
-
-        // 3. Leaflet.js Initialization
-        const propertiesData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(mapData));
-        
-        // Center on Klang Valley / Greater KL
-        const map = L.map('propertyMap', { scrollWheelZoom: false }).setView([3.1390, 101.6869], 11);
-
+        // 1. Initialize Leaflet Map
+        const map = L.map('mapContainer').setView([3.8, 101.7], 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        const markers = [];
+        // Add custom price markers to map
+        mapProperties.forEach(p => {
+            const priceHtml = `<div class="custom-price-pin" data-base-price="${p.price}">RM ${Math.round(p.price)}</div>`;
+            const customIcon = L.divIcon({
+                html: priceHtml,
+                className: 'custom-leaflet-pin',
+                iconSize: [70, 30],
+                iconAnchor: [35, 15]
+            });
 
-        // Custom green pinpoint icon
-        const greenIcon = L.divIcon({
-            className: 'custom-map-pin',
-            html: `<div style="background:#0d9488;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,0.3);border:2px solid #fff;"><i class="bi bi-house-door-fill" style="font-size:14px;"></i></div>`,
-            iconSize: [34, 34],
-            iconAnchor: [17, 34],
-            popupAnchor: [0, -32]
+            const popupContent = `
+                <div style="width:200px; font-family:'Plus Jakarta Sans',sans-serif;">
+                    <img src="${p.cover}" style="width:100%; height:110px; object-fit:cover; border-radius:10px; margin-bottom:8px;" />
+                    <span class="badge bg-secondary mb-1" style="font-size:0.7rem;">${p.type}</span>
+                    <h6 class="fw-bold mb-1 text-truncate" title="${p.title}" style="font-size:0.85rem;">${p.title}</h6>
+                    <p class="text-muted mb-2" style="font-size:0.75rem;">${p.city}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <strong class="text-danger" style="font-size:0.9rem;">RM ${p.price}/night</strong>
+                        <a href="/Property/Details/${p.id}" class="btn btn-sm btn-dark px-2 py-1" style="font-size:0.72rem; border-radius:12px;">View</a>
+                    </div>
+                </div>
+            `;
+
+            L.marker([p.lat, p.lng], { icon: customIcon })
+                .bindPopup(popupContent)
+                .addTo(map);
         });
 
-        if (propertiesData && propertiesData.length > 0) {
-            const group = [];
-            propertiesData.forEach(p => {
-                let img = p.cover;
-                if (!img.startsWith("http") && !img.startsWith("/")) {
-                    img = "/uploads/properties/" + img;
-                }
-
-                const popupContent = `
-                    <div style="width: 220px; font-family: 'Plus Jakarta Sans', sans-serif;">
-                        <img src="${img}" style="width:100%; height:110px; object-fit:cover; border-radius:8px; margin-bottom:8px;" onerror="this.src='https://placehold.co/400x250/e2e8f0/334155?text=HomeNest';" />
-                        <div style="font-weight:700; font-size:13px; margin-bottom:2px; line-height:1.2;">${p.title}</div>
-                        <div style="color:#64748b; font-size:11px; margin-bottom:6px;"><i class="bi bi-geo-alt-fill text-danger"></i> ${p.city}</div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; border-top:1px solid #f1f5f9; pt-1;">
-                            <div style="color:#0d9488; font-weight:700; font-size:13px;">RM ${Number(p.minRent).toLocaleString()}<span style="font-size:10px; color:#64748b;">/mo</span></div>
-                            <a href="/Property/Details/${p.id}" class="btn btn-sm text-white" style="background:#0d9488; font-size:11px; padding:2px 8px; border-radius:4px; text-decoration:none;">View</a>
-                        </div>
-                    </div>
-                `;
-
-                const marker = L.marker([p.lat, p.lng], { icon: greenIcon })
-                    .bindPopup(popupContent)
-                    .addTo(map);
-
-                marker.propertyCity = (p.city || "").toLowerCase();
-                markers.push(marker);
-                group.push([p.lat, p.lng]);
-            });
-
-            if (group.length > 0) {
-                map.fitBounds(group, { padding: [40, 40] });
+        // Toggle Map Button
+        document.getElementById('btnToggleMap').addEventListener('click', function() {
+            const container = document.getElementById('mapContainer');
+            const txt = document.getElementById('mapToggleText');
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                txt.textContent = 'Hide Map';
+                map.invalidateSize();
+            } else {
+                container.style.display = 'none';
+                txt.textContent = 'Show Map';
             }
+        });
+
+        // Quick Fly-To Area Chips
+        document.querySelectorAll('.area-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                const lat = parseFloat(this.getAttribute('data-lat'));
+                const lng = parseFloat(this.getAttribute('data-lng'));
+                const zoom = parseInt(this.getAttribute('data-zoom'));
+                map.flyTo([lat, lng], zoom, { duration: 1.5 });
+            });
+        });
+
+        // 2. Interactive Price Range Slider
+        const slider = document.getElementById('priceRange');
+        const priceDisplay = document.getElementById('priceDisplay');
+        const inputMaxPrice = document.getElementById('inputMaxPrice');
+
+        slider.addEventListener('input', function() {
+            priceDisplay.textContent = `Up to RM ${this.value}`;
+            inputMaxPrice.value = this.value;
+            triggerAjaxSearch();
+        });
+
+        // 3. AJAX Dynamic Filtering without Page Reload
+        let debounceTimer;
+        function triggerAjaxSearch(page = 1) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                executeAjaxSearch(page);
+            }, 300);
         }
 
-        // 4. Quick filter chips click handler
-        document.querySelectorAll(".quick-filter-chip").forEach(btn => {
-            btn.addEventListener("click", function () {
-                document.querySelectorAll(".quick-filter-chip").forEach(b => b.classList.remove("active"));
-                this.classList.add("active");
+        function executeAjaxSearch(page = 1) {
+            $('#loadingSpinner').removeClass('d-none');
+            const formData = $('#searchForm').serialize() + '&page=' + page;
 
-                const filter = this.getAttribute("data-filter");
-                const lat = parseFloat(this.getAttribute("data-lat"));
-                const lng = parseFloat(this.getAttribute("data-lng"));
+            $.ajax({
+                url: '/Property/Catalog',
+                type: 'GET',
+                data: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function(html) {
+                    $('#catalogGrid').html(html);
+                    $('#loadingSpinner').addClass('d-none');
+                    bindWishlistEvents();
+                    bindPaginationEvents();
 
-                if (lat && lng) {
-                    map.flyTo([lat, lng], 14, { animate: true, duration: 1.2 });
-                } else {
-                    if (markers.length > 0) {
-                        const bounds = L.latLngBounds(markers.map(m => m.getLatLng()));
-                        map.flyToBounds(bounds, { padding: [40, 40], duration: 1 });
+                    // Re-apply currency conversion if active
+                    const rate = parseFloat(localStorage.getItem('homenest_rate')) || 1.0;
+                    const sym = localStorage.getItem('homenest_symbol') || 'RM';
+                    if (rate !== 1.0) {
+                        document.querySelectorAll('[data-base-price]').forEach(el => {
+                            const base = parseFloat(el.getAttribute('data-base-price'));
+                            if (!isNaN(base)) {
+                                el.textContent = `${sym} ${(base * rate).toFixed(0)}`;
+                            }
+                        });
                     }
+                },
+                error: function() {
+                    $('#loadingSpinner').addClass('d-none');
                 }
             });
+        }
+
+        // Live inputs triggers
+        $('#inputKeyword').on('input', () => triggerAjaxSearch(1));
+        $('#inputCheckIn, #inputCheckOut, #selectGuests, #selectType, #selectSort, .amenity-checkbox').on('change', () => triggerAjaxSearch(1));
+        $('#btnLiveSearch').on('click', () => triggerAjaxSearch(1));
+
+        // 4. AJAX Wishlist Toggle
+        function bindWishlistEvents() {
+            $('.btn-wishlist').off('click').on('click', function(e) {
+                e.preventDefault();
+                const btn = $(this);
+                const propId = btn.data('property-id');
+                const icon = btn.find('i');
+
+                $.ajax({
+                    url: '/Property/ToggleWishlist',
+                    type: 'POST',
+                    data: { propertyId: propId },
+                    success: function(res) {
+                        if (res.success) {
+                            if (res.isSaved) {
+                                icon.removeClass('bi-heart text-dark').addClass('bi-heart-fill text-danger');
+                            } else {
+                                icon.removeClass('bi-heart-fill text-danger').addClass('bi-heart text-dark');
+                            }
+                        }
+                    },
+                    error: function(xhr) {
+                        if (xhr.status === 401) {
+                            window.location.href = '/Account/Login?returnUrl=/Property/Catalog';
+                        }
+                    }
+                });
+            });
+        }
+
+        // 5. AJAX Pagination Events
+        function bindPaginationEvents() {
+            $('.ajax-page-link').off('click').on('click', function(e) {
+                e.preventDefault();
+                const page = $(this).data('page');
+                if (page > 0) {
+                    executeAjaxSearch(page);
+                    $('html, body').animate({ scrollTop: $('#catalogGrid').offset().top - 100 }, 400);
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            bindWishlistEvents();
+            bindPaginationEvents();
         });
     </script>
 }

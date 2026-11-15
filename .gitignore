@@ -44,3 +44,8 @@ packages/
 ## OS generated files
 .DS_Store
 Thumbs.db
+
+## Database files
+App_Data/
+*.mdf
+*.ldf

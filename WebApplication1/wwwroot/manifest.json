@@ -1,0 +1,17 @@
+{
+  "name": "HomeNest Airbnb Vacation Rentals",
+  "short_name": "HomeNest",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ff385c",
+  "description": "Short-term holiday rentals & Airbnb booking system for Malaysia.",
+  "icons": [
+    {
+      "src": "/uploads/default.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
+

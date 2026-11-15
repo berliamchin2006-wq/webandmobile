@@ -1,63 +1,294 @@
-@model HomeNest.Models.User
-
+@model HomeNest.Models.ProfileVM
 @{
-    ViewData["Title"] = "My Profile";
+    ViewData["Title"] = "User Profile & Settings";
 }
 
-<div class="row justify-content-center my-4">
-    <div class="col-lg-7">
-        <div class="card border-0 shadow-sm p-4 p-md-5 rounded-4">
-            <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
-                <div class="rounded-circle text-white d-flex align-items-center justify-content-center me-3" style="width: 56px; height: 56px; background:#0d9488; font-size: 1.5rem;">
-                    <i class="bi bi-person-fill"></i>
+@section Styles {
+    <style>
+        .profile-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+            margin-bottom: 24px;
+        }
+
+        #webcamVideo, #webcamCanvas {
+            max-width: 100%;
+            border-radius: 14px;
+            background: #0f172a;
+        }
+    </style>
+}
+
+<div class="container py-4" style="max-width: 860px;">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-danger bg-opacity-75 rounded-pill px-3 py-1 mb-1">Module 1.2: Profile & Verification Management</span>
+            <h2 class="fw-bold mb-0">Account Profile & Settings</h2>
+        </div>
+        <span class="badge @(Model.Role == "Admin" ? "bg-danger" : (Model.Role == "Host" ? "bg-warning text-dark" : "bg-primary")) rounded-pill px-3 py-2 fs-6">
+            @Model.Role Account
+        </span>
+    </div>
+
+    <!-- MAIN PROFILE FORM -->
+    <form asp-action="Profile" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="WebcamPhotoData" id="inputWebcamData" />
+
+        <!-- 1. PERSONAL INFORMATION & PHOTO -->
+        <div class="profile-card">
+            <h5 class="fw-bold mb-3"><i class="bi bi-person-circle text-primary me-2"></i> Personal Information</h5>
+            
+            <div class="d-flex flex-wrap align-items-center gap-4 mb-4">
+                <div class="text-center">
+                    <img id="avatarPreview" src="/uploads/profiles/@Model.CurrentPhoto" onerror="this.src='/uploads/default.png'" 
+                         class="rounded-circle border shadow-sm" style="width:100px; height:100px; object-fit:cover;" />
+                    <span class="d-block small text-muted mt-1">Current Photo</span>
                 </div>
-                <div>
-                    <h3 class="fw-bold mb-0" style="color:#0f172a;">User Profile</h3>
-                    <span class="badge" style="background:#ecfdf5; color:#059669; font-weight:700;">@Model.Role</span>
-                    <small class="text-muted ms-2">Member since @Model.CreatedAt.ToString("MMM yyyy")</small>
+                <div class="flex-grow-1">
+                    <label class="form-label fw-semibold">Update Profile Photo</label>
+                    <input asp-for="PhotoUpload" type="file" class="form-control mb-2" accept="image/*" />
+                    <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#webcamModal">
+                        <i class="bi bi-camera-fill me-1"></i> [Additional Feature] Take Photo via Webcam
+                    </button>
                 </div>
             </div>
 
-            <form asp-action="Profile" method="post">
-                @Html.AntiForgeryToken()
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label asp-for="FullName" class="form-label fw-semibold">Full Name *</label>
+                    <input asp-for="FullName" class="form-control" />
+                    <span asp-validation-for="FullName" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="PhoneNumber" class="form-label fw-semibold">Phone Number *</label>
+                    <input asp-for="PhoneNumber" class="form-control" />
+                    <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
+                </div>
+            </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold small">Registered Email (Read-Only)</label>
-                    <input type="email" class="form-control bg-light" value="@Model.Email" readonly />
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Email Address (Read-Only)</label>
+                <input type="text" class="form-control bg-light" value="@Model.Email" readonly />
+                <small class="text-muted"><i class="bi bi-patch-check-fill text-success"></i> Email verified and protected.</small>
+            </div>
+        </div>
+
+        <!-- 2. UI PREFERENCES (THEME & CURRENCY) -->
+        <div class="profile-card">
+            <h5 class="fw-bold mb-3"><i class="bi bi-palette text-primary me-2"></i> System UI Preferences</h5>
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="ThemePreference" class="form-label fw-semibold">Theme Mode</label>
+                    <select asp-for="ThemePreference" class="form-select">
+                        <option value="light">☀️ Light Theme (Default)</option>
+                        <option value="dark">🌙 Dark Theme (OLED / Night)</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="PreferredCurrency" class="form-label fw-semibold">Display Currency</label>
+                    <select asp-for="PreferredCurrency" class="form-select">
+                        <option value="MYR">🇲🇾 MYR - Malaysian Ringgit (RM)</option>
+                        <option value="USD">🇺🇸 USD - US Dollar ($)</option>
+                        <option value="SGD">🇸🇬 SGD - Singapore Dollar (S$)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. HOST PAYOUT DETAILS (ENCRYPTED) -->
+        @if (Model.Role == "Host" || Model.Role == "Admin")
+        {
+            <div class="profile-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-bank text-success me-2"></i> Host Payout Bank Information</h5>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">
+                        <i class="bi bi-shield-lock-fill"></i> AES Encrypted
+                    </span>
                 </div>
 
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold small">Full Name *</label>
-                        <input type="text" name="fullName" class="form-control" value="@Model.FullName" required />
+                <div class="row g-3 mb-2">
+                    <div class="col-md-4">
+                        <label asp-for="BankName" class="form-label fw-semibold">Bank Name</label>
+                        <input asp-for="BankName" class="form-control" placeholder="e.g. Maybank / CIMB" />
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold small">Phone Number *</label>
-                        <input type="text" name="phoneNumber" class="form-control" value="@Model.PhoneNumber" required />
+                    <div class="col-md-4">
+                        <label asp-for="BankAccountNumber" class="form-label fw-semibold">Account Number</label>
+                        <input asp-for="BankAccountNumber" class="form-control" placeholder="Account Number" />
                     </div>
-                </div>
-
-                <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">Change Password (Optional)</h5>
-
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold small">Current Password</label>
-                        <input type="password" name="currentPassword" class="form-control" placeholder="••••••••" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold small">New Password</label>
-                        <input type="password" name="newPassword" class="form-control" placeholder="Min. 8 characters" />
+                    <div class="col-md-4">
+                        <label asp-for="BankHolderName" class="form-label fw-semibold">Beneficiary Name</label>
+                        <input asp-for="BankHolderName" class="form-control" placeholder="As per bank passbook" />
                     </div>
                 </div>
+                <small class="text-muted">Account numbers are encrypted at rest using AES-256 for financial security compliance.</small>
+            </div>
+        }
 
-                <div class="d-flex justify-content-between align-items-center">
-                    <a asp-controller="Property" asp-action="Catalog" class="btn btn-outline-secondary">Back</a>
-                    <button type="submit" class="btn btn-primary px-4" style="background:#0d9488; border-color:#0d9488;">
-                        Save Profile Changes
+        <!-- 4. SECURITY & PASSWORD CHANGE -->
+        <div class="profile-card">
+            <h5 class="fw-bold mb-3"><i class="bi bi-shield-lock text-danger me-2"></i> Change Password</h5>
+            
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="CurrentPassword" class="form-label fw-semibold">Current Password</label>
+                    <input asp-for="CurrentPassword" type="password" class="form-control" placeholder="••••••••" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="NewPassword" class="form-label fw-semibold">New Password</label>
+                    <input asp-for="NewPassword" type="password" class="form-control" placeholder="Min 8 characters" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="ConfirmNewPassword" class="form-label fw-semibold">Confirm Password</label>
+                    <input asp-for="ConfirmNewPassword" type="password" class="form-control" placeholder="••••••••" />
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end mb-4">
+            <button type="submit" class="btn btn-airbnb rounded-pill px-5 py-2 fs-5 fw-bold shadow">
+                Save Profile Settings
+            </button>
+        </div>
+
+    </form>
+
+    <!-- 5. HOST IDENTITY VERIFICATION SECTION (HOST ONLY) -->
+    @if (Model.Role == "Host")
+    {
+        <div class="profile-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0"><i class="bi bi-person-vcard text-primary me-2"></i> Host Identity Verification</h5>
+                @if (Model.IdentityStatus == "Verified")
+                {
+                    <span class="badge bg-success rounded-pill px-3 py-1 fs-6"><i class="bi bi-check-circle-fill"></i> Verified Host</span>
+                }
+                else if (Model.IdentityStatus == "PendingApproval")
+                {
+                    <span class="badge bg-warning text-dark rounded-pill px-3 py-1 fs-6"><i class="bi bi-hourglass-split"></i> Verification Pending Admin Review</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary rounded-pill px-3 py-1 fs-6">Unverified</span>
+                }
+            </div>
+
+            <p class="text-muted small mb-3">
+                To protect guests and qualify for the Superhost badge, please submit a clear photo of your Malaysian Government MyKad IC, Passport, or Business License for Admin review.
+            </p>
+
+            @if (Model.IdentityStatus != "Verified")
+            {
+                <form asp-action="SubmitHostVerification" method="post" enctype="multipart/form-data" class="p-3 bg-light rounded-4">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Upload Government ID Document *</label>
+                        <input type="file" name="IdDocument" class="form-control" accept="image/*,.pdf" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Additional Remarks</label>
+                        <input type="text" name="Notes" class="form-control" placeholder="e.g. MyKad front and back photo" />
+                    </div>
+                    <button type="submit" class="btn btn-dark rounded-pill px-4 btn-sm fw-bold">
+                        Submit ID for Admin Verification
+                    </button>
+                </form>
+            }
+        </div>
+    }
+
+</div>
+
+<!-- LIVE WEBCAM MODAL -->
+<div class="modal fade" id="webcamModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-camera me-1"></i> Live Webcam Snapshot</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" id="btnCloseWebcam"></button>
+            </div>
+            <div class="modal-body text-center p-4">
+                <video id="webcamVideo" autoplay playsinline style="height:220px; width:100%; object-fit:cover;"></video>
+                <canvas id="webcamCanvas" class="d-none" width="300" height="300"></canvas>
+                <div class="mt-3 d-flex justify-content-center gap-2">
+                    <button type="button" class="btn btn-airbnb rounded-pill px-4" id="btnCapturePhoto">
+                        <i class="bi bi-camera-fill me-1"></i> Snap Photo
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3 d-none" id="btnRetakePhoto">
+                        Retake
                     </button>
                 </div>
-            </form>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center">
+                <button type="button" class="btn btn-success rounded-pill px-5 d-none" id="btnAcceptPhoto" data-bs-dismiss="modal">
+                    Use This Photo
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
+@section Scripts {
+    <script>
+        let webcamStream = null;
+        const video = document.getElementById('webcamVideo');
+        const canvas = document.getElementById('webcamCanvas');
+        const ctx = canvas.getContext('2d');
+        const btnCapture = document.getElementById('btnCapturePhoto');
+        const btnRetake = document.getElementById('btnRetakePhoto');
+        const btnAccept = document.getElementById('btnAcceptPhoto');
+        const inputWebcamData = document.getElementById('inputWebcamData');
+        const avatarPreview = document.getElementById('avatarPreview');
+
+        const webcamModal = document.getElementById('webcamModal');
+        webcamModal.addEventListener('shown.bs.modal', async () => {
+            try {
+                webcamStream = await navigator.mediaDevices.getUserMedia({ video: { width: 300, height: 300 } });
+                video.srcObject = webcamStream;
+                video.classList.remove('d-none');
+                canvas.classList.add('d-none');
+                btnCapture.classList.remove('d-none');
+                btnRetake.classList.add('d-none');
+                btnAccept.classList.add('d-none');
+            } catch (err) {
+                alert('Could not access webcam: ' + err.message);
+            }
+        });
+
+        webcamModal.addEventListener('hidden.bs.modal', () => {
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(t => t.stop());
+                video.srcObject = null;
+            }
+        });
+
+        btnCapture.addEventListener('click', () => {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            video.classList.add('d-none');
+            canvas.classList.remove('d-none');
+            btnCapture.classList.add('d-none');
+            btnRetake.classList.remove('d-none');
+            btnAccept.classList.remove('d-none');
+        });
+
+        btnRetake.addEventListener('click', () => {
+            video.classList.remove('d-none');
+            canvas.classList.add('d-none');
+            btnCapture.classList.remove('d-none');
+            btnRetake.classList.add('d-none');
+            btnAccept.classList.add('d-none');
+        });
+
+        btnAccept.addEventListener('click', () => {
+            const dataUrl = canvas.toDataURL('image/png');
+            inputWebcamData.value = dataUrl;
+            avatarPreview.src = dataUrl;
+            alert('Webcam snapshot captured! Click "Save Profile Settings" to confirm.');
+        });
+    </script>
+}

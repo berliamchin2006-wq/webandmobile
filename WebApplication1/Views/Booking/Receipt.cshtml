@@ -1,114 +1,191 @@
-@model HomeNest.Models.RentalPayment
-
+@model HomeNest.Models.Booking
 @{
-    ViewData["Title"] = $"E-Receipt #{Model.TransactionRef}";
-    var booking = Model.TenancyBooking;
-    var room = booking.RoomUnit;
-    var property = room.Property;
+    ViewData["Title"] = "E-Receipt & Invoice - Booking #" + Model.Id;
+    var p = Model.Property;
+    var payment = Model.Payments.FirstOrDefault(pay => pay.PaymentType == "FullPayment") ?? Model.Payments.FirstOrDefault();
 }
 
-<div class="container my-4" style="max-width: 800px;">
-    <!-- Print Actions -->
-    <div class="d-flex justify-content-between align-items-center mb-3 d-print-none">
-        <a asp-action="Leases" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left me-1"></i> Back to Leases
+@section Styles {
+    <style>
+        .invoice-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+            color: #222;
+        }
+
+        @@media print {
+            body {
+                background: white !important;
+                color: black !important;
+            }
+            .navbar-airbnb, .demo-bar, footer, .no-print {
+                display: none !important;
+            }
+            .invoice-card {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+            }
+        }
+    </style>
+}
+
+<div class="container py-4" style="max-width: 850px;">
+    
+    <!-- TOP ACTIONS (NO-PRINT) -->
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <a asp-action="MyBookings" class="btn btn-outline-secondary rounded-pill px-3">
+            <i class="bi bi-arrow-left"></i> My Trips
         </a>
-        <button type="button" class="btn btn-primary btn-sm px-3" onclick="window.print();" style="background:#0d9488; border-color:#0d9488;">
-            <i class="bi bi-printer-fill me-1"></i> Print / Save as PDF
-        </button>
+        <div class="d-flex gap-2">
+            <a asp-action="CheckInPass" asp-route-id="@Model.Id" class="btn btn-outline-danger rounded-pill px-3">
+                <i class="bi bi-qr-code"></i> View QR Pass
+            </a>
+            <button type="button" onclick="window.print()" class="btn btn-dark rounded-pill px-4">
+                <i class="bi bi-printer me-1"></i> Print / Save as PDF
+            </button>
+        </div>
     </div>
 
-    <!-- Official Receipt Card -->
-    <div class="card border shadow-sm p-4 p-md-5 rounded-4 bg-white" id="receiptPaper">
-        <!-- Header -->
+    <!-- INVOICE DOCUMENT -->
+    <div class="invoice-card">
+        
+        <!-- HEADER -->
         <div class="d-flex justify-content-between align-items-start border-bottom pb-4 mb-4">
-            <div class="d-flex align-items-center">
-                <div class="rounded-3 d-flex align-items-center justify-content-center text-white me-3" style="width: 48px; height: 48px; background: #0d9488;">
-                    <i class="bi bi-house-door-fill fs-4"></i>
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-houses-fill text-danger fs-2"></i>
+                    <h3 class="fw-bold mb-0 text-danger">HomeNest</h3>
                 </div>
-                <div>
-                    <h3 class="fw-bold mb-0" style="color: #0f172a;">HomeNest</h3>
-                    <small class="text-muted">MY House and Room Rental Management System</small>
-                </div>
+                <p class="text-muted small mb-0">HomeNest Vacation Rentals & Accommodations</p>
+                <p class="text-muted small mb-0">SST Reg No: W10-2026-98765432</p>
+                <p class="text-muted small mb-0">support@homenest.my · www.homenest.my</p>
             </div>
             <div class="text-end">
-                <span class="badge bg-success-subtle text-success border border-success px-3 py-1 fs-6">PAID</span>
-                <div class="text-muted small mt-1">Receipt No: <strong>@Model.TransactionRef</strong></div>
-                <div class="text-muted small">Date: @Model.PaymentDate.ToString("dd MMM yyyy, hh:mm tt")</div>
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fs-6 mb-2">
+                    PAID IN FULL
+                </span>
+                <h5 class="fw-bold mb-0">TAX INVOICE</h5>
+                <p class="text-muted small mb-0">Invoice Ref: <strong>INV-2026-@Model.Id.ToString("D5")</strong></p>
+                <p class="text-muted small mb-0">Date: @Model.BookingDate.ToString("dd MMM yyyy, hh:mm tt")</p>
             </div>
         </div>
 
-        <!-- Billed To & Landlord Details -->
-        <div class="row g-4 mb-4">
-            <div class="col-sm-6">
-                <h6 class="text-uppercase text-muted fw-bold small">Received From (Tenant)</h6>
-                <div class="fw-bold fs-6">@booking.Tenant.FullName</div>
-                <div class="small text-muted">Email: @booking.Tenant.Email</div>
-                <div class="small text-muted">Phone: @booking.Tenant.PhoneNumber</div>
+        <!-- BILLED TO & HOST INFO -->
+        <div class="row g-4 mb-4 pb-3 border-bottom">
+            <div class="col-6">
+                <h6 class="fw-bold text-uppercase text-muted" style="font-size:0.75rem;">Billed To (Guest)</h6>
+                <h5 class="fw-bold mb-1">@Model.Guest.FullName</h5>
+                <p class="text-muted small mb-0"><i class="bi bi-envelope"></i> @Model.Guest.Email</p>
+                <p class="text-muted small mb-0"><i class="bi bi-telephone"></i> @Model.Guest.PhoneNumber</p>
             </div>
-            <div class="col-sm-6 text-sm-end">
-                <h6 class="text-uppercase text-muted fw-bold small">Landlord / Payee</h6>
-                <div class="fw-bold fs-6">@property.Owner.FullName</div>
-                <div class="small text-muted">Property: @property.Title</div>
-                <div class="small text-muted">@property.Address, @property.City</div>
+            <div class="col-6 text-end">
+                <h6 class="fw-bold text-uppercase text-muted" style="font-size:0.75rem;">Host Information</h6>
+                <h5 class="fw-bold mb-1">@p.Host.FullName</h5>
+                <p class="text-muted small mb-0"><i class="bi bi-envelope"></i> @p.Host.Email</p>
+                <p class="text-muted small mb-0"><i class="bi bi-telephone"></i> @p.Host.PhoneNumber</p>
             </div>
         </div>
 
-        <!-- Line Item Table -->
+        <!-- STAY DETAILS -->
+        <div class="mb-4">
+            <h6 class="fw-bold text-uppercase text-muted mb-2" style="font-size:0.75rem;">Reservation Summary</h6>
+            <div class="p-3 bg-light rounded-3">
+                <h5 class="fw-bold mb-1">@p.Title</h5>
+                <p class="text-muted small mb-2"><i class="bi bi-geo-alt"></i> @p.Address, @p.City, @p.State, @p.Postcode</p>
+                <div class="d-flex flex-wrap gap-4 text-dark" style="font-size:0.88rem;">
+                    <span><strong>Check-in:</strong> @Model.CheckInDate.ToString("dd MMM yyyy") (3:00 PM)</span>
+                    <span><strong>Check-out:</strong> @Model.CheckOutDate.ToString("dd MMM yyyy") (11:00 AM)</span>
+                    <span><strong>Duration:</strong> @Model.TotalNights nights</span>
+                    <span><strong>Guests:</strong> @Model.GuestCount pax</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ITEMIZED FINANCIAL TABLE -->
         <div class="table-responsive mb-4">
-            <table class="table table-bordered mb-0">
+            <table class="table align-middle">
                 <thead class="table-light">
                     <tr>
                         <th>Item Description</th>
-                        <th>Period / Reference</th>
+                        <th class="text-center">Rate</th>
+                        <th class="text-center">Nights</th>
                         <th class="text-end">Amount (MYR)</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
                         <td>
-                            <div class="fw-bold">@room.RoomName (@room.RoomType)</div>
-                            <small class="text-muted">Advance 1st Month Rental</small>
+                            <strong class="d-block">Accommodation Rental</strong>
+                            <small class="text-muted">@p.PropertyType - @Model.TotalNights nights</small>
                         </td>
-                        <td>@booking.StartDate.ToString("MMM yyyy")</td>
-                        <td class="text-end">RM @booking.AgreedMonthlyRent.ToString("N2")</td>
+                        <td class="text-center">RM @Model.NightlyRate.ToString("N2")</td>
+                        <td class="text-center">@Model.TotalNights</td>
+                        <td class="text-end">RM @Model.SubtotalAmount.ToString("N2")</td>
                     </tr>
                     <tr>
                         <td>
-                            <div class="fw-bold">Security Deposit (Refundable)</div>
-                            <small class="text-muted">Equivalent to 2 months rent</small>
+                            <strong class="d-block">Cleaning & Sanitization Fee</strong>
+                            <small class="text-muted">Standard post-stay sanitization</small>
                         </td>
-                        <td>Tenure: @booking.DurationMonths Months</td>
-                        <td class="text-end">RM @room.SecurityDeposit.ToString("N2")</td>
+                        <td class="text-center">RM @Model.CleaningFee.ToString("N2")</td>
+                        <td class="text-center">1</td>
+                        <td class="text-end">RM @Model.CleaningFee.ToString("N2")</td>
                     </tr>
                     <tr>
                         <td>
-                            <div class="fw-bold">Utility Deposit (Refundable)</div>
-                            <small class="text-muted">Water, electricity, and sewerage guarantee</small>
+                            <strong class="d-block">HomeNest Service Fee & 8% SST</strong>
+                            <small class="text-muted">Platform booking administration & safety coverage</small>
                         </td>
-                        <td>Tenure: @booking.DurationMonths Months</td>
-                        <td class="text-end">RM @room.UtilityDeposit.ToString("N2")</td>
+                        <td class="text-center">-</td>
+                        <td class="text-center">-</td>
+                        <td class="text-end">RM @Model.ServiceFee.ToString("N2")</td>
                     </tr>
                 </tbody>
-                <tfoot class="table-light">
-                    <tr>
-                        <th colspan="2" class="text-end">Total Paid:</th>
-                        <th class="text-end text-success fs-5">RM @Model.Amount.ToString("N2")</th>
+                <tfoot>
+                    <tr class="fs-5 fw-bold border-top border-dark">
+                        <td colspan="3" class="text-end">Total Paid:</td>
+                        <td class="text-end text-danger">RM @Model.TotalAmount.ToString("N2")</td>
                     </tr>
                 </tfoot>
             </table>
         </div>
 
-        <!-- Payment Meta & Terms -->
-        <div class="p-3 bg-light rounded-3 small text-muted mb-4 border">
-            <div><strong>Payment Method:</strong> @Model.PaymentMethod</div>
-            <div><strong>Transaction Reference:</strong> @Model.TransactionRef</div>
-            <div><strong>Tenancy Tenure:</strong> @booking.StartDate.ToString("dd MMM yyyy") to @booking.EndDate.ToString("dd MMM yyyy") (@booking.DurationMonths Months)</div>
+        <!-- PAYMENT METHOD & DIGITAL QR CHECK-IN PASS FOOTER -->
+        <div class="row g-4 align-items-center pt-3 border-top">
+            <div class="col-8">
+                <h6 class="fw-bold mb-1" style="font-size:0.85rem;">Payment Transaction Details</h6>
+                <p class="text-muted small mb-0"><strong>Method:</strong> @(payment?.PaymentMethod ?? "Stripe Credit Card")</p>
+                <p class="text-muted small mb-0"><strong>Transaction Reference:</strong> @(payment?.TransactionRef ?? "TXN-XXXXXX")</p>
+                <p class="text-muted small mb-0"><strong>Status:</strong> Completed & Verified</p>
+            </div>
+            <div class="col-4 text-center">
+                <div class="p-2 border rounded-3 bg-white d-inline-block">
+                    <!-- Dynamic SVG QR Code Simulation -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="75" height="75" viewBox="0 0 100 100">
+                        <rect width="100" height="100" fill="white"/>
+                        <rect x="10" y="10" width="25" height="25" fill="#222"/>
+                        <rect x="15" y="15" width="15" height="15" fill="white"/>
+                        <rect x="18" y="18" width="9" height="9" fill="#222"/>
+                        <rect x="65" y="10" width="25" height="25" fill="#222"/>
+                        <rect x="70" y="15" width="15" height="15" fill="white"/>
+                        <rect x="73" y="18" width="9" height="9" fill="#222"/>
+                        <rect x="10" y="65" width="25" height="25" fill="#222"/>
+                        <rect x="15" y="70" width="15" height="15" fill="white"/>
+                        <rect x="18" y="73" width="9" height="9" fill="#222"/>
+                        <rect x="45" y="20" width="8" height="8" fill="#222"/>
+                        <rect x="45" y="45" width="12" height="12" fill="#222"/>
+                        <rect x="65" y="65" width="20" height="8" fill="#222"/>
+                        <rect x="65" y="78" width="8" height="12" fill="#222"/>
+                    </svg>
+                    <small class="d-block text-muted" style="font-size:0.65rem;">@Model.QrCheckInToken</small>
+                </div>
+            </div>
         </div>
 
-        <div class="text-center text-muted small border-top pt-3">
-            <p class="mb-0">This is a system-generated electronic receipt created under the BMIT2023 HomeNest System. No physical signature is required.</p>
-        </div>
     </div>
-</div>
 
+</div>

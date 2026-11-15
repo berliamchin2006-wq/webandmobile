@@ -1,7 +1,8 @@
+using System.Security.Claims;
 using HomeNest.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace HomeNest.Controllers
 {
@@ -16,20 +17,19 @@ namespace HomeNest.Controllers
             _helper = helper;
         }
 
+        // ==========================================
+        // Remote Email Validation
+        // ==========================================
         [AcceptVerbs("GET", "POST")]
         public IActionResult CheckEmail(string email)
         {
-            bool exists = _db.Users.Any(u => u.Email == email);
+            bool exists = _db.Users.Any(u => u.Email.ToLower() == email.Trim().ToLower());
             return Json(!exists);
         }
 
-        [HttpGet]
-        public IActionResult Login(string? returnUrl = null)
-        {
-            ViewBag.ReturnUrl = returnUrl;
-            return View(new LoginVM());
-        }
-
+        // ==========================================
+        // Dynamic SVG Anti-Bot CAPTCHA
+        // ==========================================
         [HttpGet]
         public IActionResult CaptchaImage()
         {
@@ -70,6 +70,16 @@ namespace HomeNest.Controllers
             return Content(sb.ToString(), "image/svg+xml");
         }
 
+        // ==========================================
+        // 1.1 Authentication: Login & Logout
+        // ==========================================
+        [HttpGet]
+        public IActionResult Login(string? returnUrl = null)
+        {
+            ViewBag.ReturnUrl = returnUrl;
+            return View(new LoginVM());
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(LoginVM vm, string? returnUrl = null)
@@ -77,7 +87,7 @@ namespace HomeNest.Controllers
             if (!ModelState.IsValid)
                 return View(vm);
 
-            // Verify CAPTCHA code from session
+            // Verify CAPTCHA
             string? sessionCaptcha = HttpContext.Session.GetString("CaptchaCode");
             if (string.IsNullOrEmpty(vm.Captcha) || !string.Equals(vm.Captcha.Trim(), sessionCaptcha, StringComparison.OrdinalIgnoreCase))
             {
@@ -85,55 +95,79 @@ namespace HomeNest.Controllers
                 return View(vm);
             }
 
-            var user = _db.Users.FirstOrDefault(u => u.Email == vm.Email);
+            var user = _db.Users.FirstOrDefault(u => u.Email.ToLower() == vm.Email.Trim().ToLower());
             if (user == null)
             {
+                _helper.LogAudit(_db, null, vm.Email, "FailedLogin", "Non-existent user email attempt.");
                 ModelState.AddModelError("", "Invalid email or password.");
                 return View(vm);
             }
 
+            // Check 3-Strike Lockout
             if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTime.Now)
             {
                 var remainingMinutes = Math.Ceiling((user.LockoutEnd.Value - DateTime.Now).TotalMinutes);
-                ModelState.AddModelError("", $"Account is temporarily locked due to multiple failed login attempts. Please try again in {remainingMinutes} minute(s).");
+                _helper.LogAudit(_db, user.Id, user.Email, "LockoutBlocked", $"Login blocked due to active lockout ({remainingMinutes} mins left).");
+                ModelState.AddModelError("", $"Account is temporarily locked due to 3 failed login attempts. Please try again in {remainingMinutes} minute(s).");
                 return View(vm);
             }
 
+            // Verify Password
             if (!_helper.VerifyPassword(user.PasswordHash, vm.Password))
             {
                 user.FailedLoginAttempts++;
-
                 if (user.FailedLoginAttempts >= 3)
                 {
-                    user.LockoutEnd = DateTime.Now.AddMinutes(15);
+                    user.LockoutEnd = DateTime.Now.AddMinutes(10);
                     _db.SaveChanges();
-                    ModelState.AddModelError("", "You have entered the wrong password 3 times. Your account is locked for 15 minutes.");
-                    return View(vm);
+                    _helper.LogAudit(_db, user.Id, user.Email, "AccountLocked", "Account locked for 10 minutes following 3 consecutive failed login attempts.");
+                    ModelState.AddModelError("", "Too many failed attempts! Your account has been temporarily locked for 10 minutes.");
                 }
-
-                _db.SaveChanges();
-                int attemptsLeft = 3 - user.FailedLoginAttempts;
-                ModelState.AddModelError("", $"Invalid email or password. ({attemptsLeft} attempt(s) remaining before temporary lockout).");
+                else
+                {
+                    _db.SaveChanges();
+                    int attemptsLeft = 3 - user.FailedLoginAttempts;
+                    _helper.LogAudit(_db, user.Id, user.Email, "FailedLogin", $"Incorrect password attempt ({user.FailedLoginAttempts}/3).");
+                    ModelState.AddModelError("", $"Invalid email or password. You have {attemptsLeft} attempt(s) remaining before account lockout.");
+                }
                 return View(vm);
             }
 
+            // Successful Login: Reset lockout counters
             user.FailedLoginAttempts = 0;
             user.LockoutEnd = null;
             _db.SaveChanges();
 
+            // Set user preferences in session / cookie
+            HttpContext.Session.SetString("UserTheme", user.ThemePreference ?? "light");
+            HttpContext.Session.SetString("UserCurrency", user.PreferredCurrency ?? "MYR");
+
             await _helper.SignInAsync(user.Id, user.Email, user.FullName, user.Role, vm.RememberMe);
+            _helper.LogAudit(_db, user.Id, user.Email, "LoginSuccess", $"User logged in with role: {user.Role}.");
 
             if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                 return Redirect(returnUrl);
 
-            return user.Role switch
-            {
-                "Admin" => RedirectToAction("Dashboard", "Booking"),
-                "Owner" => RedirectToAction("MyProperties", "Property"),
-                _ => RedirectToAction("Catalog", "Property")
-            };
+            TempData["SuccessMessage"] = $"Welcome back, {user.FullName}!";
+            return RedirectToAction("Catalog", "Property");
         }
 
+        [Authorize]
+        public async Task<IActionResult> Logout()
+        {
+            string email = User.Identity?.Name ?? "Unknown";
+            string idStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0";
+            int.TryParse(idStr, out int userId);
+
+            await _helper.SignOutAsync();
+            _helper.LogAudit(_db, userId, email, "Logout", "User logged out.");
+            TempData["SuccessMessage"] = "You have been signed out successfully.";
+            return RedirectToAction("Catalog", "Property");
+        }
+
+        // ==========================================
+        // 1.1 Registration & Email Activation
+        // ==========================================
         [HttpGet]
         public IActionResult Register()
         {
@@ -144,86 +178,158 @@ namespace HomeNest.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterVM vm)
         {
-            if (_db.Users.Any(u => u.Email == vm.Email))
-            {
-                ModelState.AddModelError(nameof(vm.Email), "Email is already registered.");
-            }
-
             if (!ModelState.IsValid)
                 return View(vm);
 
-            var user = new User
+            // Verify CAPTCHA
+            string? sessionCaptcha = HttpContext.Session.GetString("CaptchaCode");
+            if (string.IsNullOrEmpty(vm.Captcha) || !string.Equals(vm.Captcha.Trim(), sessionCaptcha, StringComparison.OrdinalIgnoreCase))
             {
-                Email = vm.Email.Trim(),
+                ModelState.AddModelError(nameof(vm.Captcha), "Invalid verification code.");
+                return View(vm);
+            }
+
+            if (_db.Users.Any(u => u.Email.ToLower() == vm.Email.Trim().ToLower()))
+            {
+                ModelState.AddModelError(nameof(vm.Email), "Email is already registered.");
+                return View(vm);
+            }
+
+            string token = Guid.NewGuid().ToString("N");
+
+            var newUser = new User
+            {
+                Email = vm.Email.Trim().ToLower(),
+                PasswordHash = _helper.HashPassword(vm.Password),
                 FullName = vm.FullName.Trim(),
                 PhoneNumber = vm.PhoneNumber.Trim(),
                 Role = vm.Role,
-                PasswordHash = _helper.HashPassword(vm.Password),
-                IsEmailVerified = true
+                IsEmailVerified = false,
+                EmailVerificationToken = token,
+                CreatedAt = DateTime.Now
             };
 
-            _db.Users.Add(user);
+            _db.Users.Add(newUser);
             _db.SaveChanges();
 
-            await _helper.SignInAsync(user.Id, user.Email, user.FullName, user.Role, false);
-            TempData["SuccessMessage"] = $"Welcome to HomeNest, {user.FullName}!";
+            _helper.LogAudit(_db, newUser.Id, newUser.Email, "UserRegistered", $"New user registered as {newUser.Role}. Email activation token generated.");
 
-            return RedirectToAction("Catalog", "Property");
-        }
+            // Store simulated activation link in TempData for demonstration
+            string verifyUrl = Url.Action("VerifyEmail", "Account", new { token }, Request.Scheme) ?? "";
+            TempData["ActivationSimulationLink"] = verifyUrl;
+            TempData["SuccessMessage"] = "Registration successful! Please check your email to activate your account, or click the simulation link below.";
 
-        public async Task<IActionResult> Logout()
-        {
-            await _helper.SignOutAsync();
-            return RedirectToAction("Catalog", "Property");
+            return RedirectToAction("Login");
         }
 
         [HttpGet]
-        public async Task<IActionResult> QuickLogin(string role, string? returnUrl = null)
+        public IActionResult VerifyEmail(string token)
         {
-            var user = _db.Users.FirstOrDefault(u => u.Role == role);
+            var user = _db.Users.FirstOrDefault(u => u.EmailVerificationToken == token);
+            if (user == null)
+            {
+                TempData["ErrorMessage"] = "Invalid or expired account activation token.";
+                return RedirectToAction("Login");
+            }
+
+            user.IsEmailVerified = true;
+            user.EmailVerificationToken = null;
+            _db.SaveChanges();
+
+            _helper.LogAudit(_db, user.Id, user.Email, "EmailActivated", "User successfully verified email address.");
+            TempData["SuccessMessage"] = "Your email has been verified successfully! You can now log in.";
+            return RedirectToAction("Login");
+        }
+
+        // ==========================================
+        // 1.1 Password Reset Flow
+        // ==========================================
+        [HttpGet]
+        public IActionResult ForgotPassword()
+        {
+            return View(new ForgotPasswordVM());
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ForgotPassword(ForgotPasswordVM vm)
+        {
+            if (!ModelState.IsValid)
+                return View(vm);
+
+            // Verify CAPTCHA
+            string? sessionCaptcha = HttpContext.Session.GetString("CaptchaCode");
+            if (string.IsNullOrEmpty(vm.Captcha) || !string.Equals(vm.Captcha.Trim(), sessionCaptcha, StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError(nameof(vm.Captcha), "Invalid verification code.");
+                return View(vm);
+            }
+
+            var user = _db.Users.FirstOrDefault(u => u.Email.ToLower() == vm.Email.Trim().ToLower());
             if (user != null)
             {
-                await _helper.SignInAsync(user.Id, user.Email, user.FullName, user.Role, false);
-                TempData["SuccessMessage"] = $"Switched role to {user.Role} ({user.FullName}).";
+                string token = Guid.NewGuid().ToString("N");
+                user.ResetToken = token;
+                user.ResetTokenExpiry = DateTime.Now.AddHours(1);
+                _db.SaveChanges();
+
+                _helper.LogAudit(_db, user.Id, user.Email, "PasswordResetRequested", "Password reset token generated.");
+
+                string resetUrl = Url.Action("ResetPassword", "Account", new { token, email = user.Email }, Request.Scheme) ?? "";
+                TempData["ResetSimulationLink"] = resetUrl;
+                TempData["SuccessMessage"] = "Password reset instructions generated! For testing, use the instant reset link shown below.";
             }
-            return LocalRedirect(returnUrl ?? Url.Action("Catalog", "Property")!);
+            else
+            {
+                // Prevent email enumeration
+                TempData["SuccessMessage"] = "If an account with that email exists, reset instructions have been dispatched.";
+            }
+
+            return View(vm);
         }
 
         [HttpGet]
-        public async Task<IActionResult> SwitchGuest(string? returnUrl = null)
+        public IActionResult ResetPassword(string token, string email)
         {
-            await _helper.SignOutAsync();
-            TempData["SuccessMessage"] = "Switched to Guest mode.";
-            return LocalRedirect(returnUrl ?? Url.Action("Catalog", "Property")!);
+            var user = _db.Users.FirstOrDefault(u => u.Email.ToLower() == email.Trim().ToLower() && u.ResetToken == token);
+            if (user == null || user.ResetTokenExpiry < DateTime.Now)
+            {
+                TempData["ErrorMessage"] = "The password reset token is invalid or has expired.";
+                return RedirectToAction("ForgotPassword");
+            }
+
+            return View(new ResetPasswordVM { Token = token, Email = email });
         }
 
-        [HttpGet]
-        public IActionResult ResetData(string? returnUrl = null)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ResetPassword(ResetPasswordVM vm)
         {
-            _db.MaintenanceTickets.RemoveRange(_db.MaintenanceTickets);
-            _db.RentalPayments.RemoveRange(_db.RentalPayments);
-            _db.TenancyBookings.RemoveRange(_db.TenancyBookings);
-            _db.ViewingAppointments.RemoveRange(_db.ViewingAppointments);
-            _db.RoomUnits.RemoveRange(_db.RoomUnits);
-            _db.PropertyPhotos.RemoveRange(_db.PropertyPhotos);
-            _db.Properties.RemoveRange(_db.Properties);
-            _db.Users.RemoveRange(_db.Users);
+            if (!ModelState.IsValid)
+                return View(vm);
+
+            var user = _db.Users.FirstOrDefault(u => u.Email.ToLower() == vm.Email.Trim().ToLower() && u.ResetToken == vm.Token);
+            if (user == null || user.ResetTokenExpiry < DateTime.Now)
+            {
+                TempData["ErrorMessage"] = "The password reset link is invalid or expired.";
+                return RedirectToAction("ForgotPassword");
+            }
+
+            user.PasswordHash = _helper.HashPassword(vm.NewPassword);
+            user.ResetToken = null;
+            user.ResetTokenExpiry = null;
+            user.FailedLoginAttempts = 0;
+            user.LockoutEnd = null;
             _db.SaveChanges();
 
-            Program.SeedSampleData(_db, _helper);
-            TempData["SuccessMessage"] = "Demo data has been reset to default state.";
-            return LocalRedirect(returnUrl ?? Url.Action("Catalog", "Property")!);
-        }
-
-        public IActionResult AccessDenied()
-        {
-            return View();
+            _helper.LogAudit(_db, user.Id, user.Email, "PasswordResetCompleted", "Password successfully reset via token.");
+            TempData["SuccessMessage"] = "Your password has been reset successfully. Please log in with your new password.";
+            return RedirectToAction("Login");
         }
 
         // ==========================================
-        // MODULE 1: USER MANAGEMENT
+        // 1.2 Profile & Webcam Photo Management
         // ==========================================
-
         [Authorize]
         [HttpGet]
         public IActionResult Profile()
@@ -232,77 +338,245 @@ namespace HomeNest.Controllers
             var user = _db.Users.Find(userId);
             if (user == null) return NotFound();
 
-            return View(user);
+            var vm = new ProfileVM
+            {
+                FullName = user.FullName,
+                PhoneNumber = user.PhoneNumber,
+                Email = user.Email,
+                Role = user.Role,
+                CurrentPhoto = user.ProfilePhoto,
+                ThemePreference = user.ThemePreference ?? "light",
+                PreferredCurrency = user.PreferredCurrency ?? "MYR",
+                BankName = user.BankName,
+                BankAccountNumber = _helper.Decrypt(user.BankAccountNumberEncrypted ?? ""),
+                BankHolderName = user.BankHolderName,
+                IdentityStatus = user.IdentityStatus ?? "Unverified",
+                IdDocumentPhoto = user.IdDocumentPhoto,
+                IdentityNotes = user.IdentityNotes
+            };
+
+            return View(vm);
         }
 
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Profile(string fullName, string phoneNumber, string? currentPassword, string? newPassword)
+        public IActionResult Profile(ProfileVM vm)
         {
             int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var user = _db.Users.Find(userId);
             if (user == null) return NotFound();
 
-            if (!string.IsNullOrWhiteSpace(fullName))
+            if (!ModelState.IsValid)
             {
-                user.FullName = fullName.Trim();
+                vm.Email = user.Email;
+                vm.Role = user.Role;
+                vm.CurrentPhoto = user.ProfilePhoto;
+                vm.IdentityStatus = user.IdentityStatus;
+                vm.IdDocumentPhoto = user.IdDocumentPhoto;
+                return View(vm);
             }
 
-            if (!string.IsNullOrWhiteSpace(phoneNumber))
+            user.FullName = vm.FullName.Trim();
+            user.PhoneNumber = vm.PhoneNumber.Trim();
+            user.ThemePreference = vm.ThemePreference;
+            user.PreferredCurrency = vm.PreferredCurrency;
+
+            // Bank details encryption
+            if (!string.IsNullOrWhiteSpace(vm.BankAccountNumber))
             {
-                user.PhoneNumber = phoneNumber.Trim();
+                user.BankName = vm.BankName?.Trim();
+                user.BankAccountNumberEncrypted = _helper.Encrypt(vm.BankAccountNumber.Trim());
+                user.BankHolderName = vm.BankHolderName?.Trim();
             }
 
-            // Optional password update
-            if (!string.IsNullOrWhiteSpace(currentPassword) && !string.IsNullOrWhiteSpace(newPassword))
+            // Live Webcam Upload or File Upload
+            if (!string.IsNullOrEmpty(vm.WebcamPhotoData))
             {
-                if (!_helper.VerifyPassword(user.PasswordHash, currentPassword))
+                try
                 {
-                    TempData["ErrorMessage"] = "Current password is incorrect.";
-                    return View(user);
+                    string webcamFile = _helper.SaveBase64Photo(vm.WebcamPhotoData, "profiles");
+                    user.ProfilePhoto = webcamFile;
+                }
+                catch
+                {
+                    // Fallback
+                }
+            }
+            else if (vm.PhotoUpload != null)
+            {
+                var err = _helper.ValidatePhoto(vm.PhotoUpload);
+                if (err != null)
+                {
+                    ModelState.AddModelError(nameof(vm.PhotoUpload), err);
+                    vm.Email = user.Email;
+                    vm.Role = user.Role;
+                    vm.CurrentPhoto = user.ProfilePhoto;
+                    return View(vm);
+                }
+                user.ProfilePhoto = _helper.SavePhoto(vm.PhotoUpload, "profiles");
+            }
+
+            // Password change check
+            if (!string.IsNullOrEmpty(vm.NewPassword))
+            {
+                if (string.IsNullOrEmpty(vm.CurrentPassword) || !_helper.VerifyPassword(user.PasswordHash, vm.CurrentPassword))
+                {
+                    ModelState.AddModelError(nameof(vm.CurrentPassword), "Current password is incorrect.");
+                    vm.Email = user.Email;
+                    vm.Role = user.Role;
+                    vm.CurrentPhoto = user.ProfilePhoto;
+                    return View(vm);
                 }
 
-                if (newPassword.Length < 8)
-                {
-                    TempData["ErrorMessage"] = "New password must be at least 8 characters.";
-                    return View(user);
-                }
-
-                user.PasswordHash = _helper.HashPassword(newPassword);
+                user.PasswordHash = _helper.HashPassword(vm.NewPassword);
             }
 
             _db.SaveChanges();
+            _helper.LogAudit(_db, user.Id, user.Email, "ProfileUpdated", "User profile and preferences updated.");
 
-            // Refresh cookie with updated name
-            await _helper.SignInAsync(user.Id, user.Email, user.FullName, user.Role, false);
+            HttpContext.Session.SetString("UserTheme", user.ThemePreference);
+            HttpContext.Session.SetString("UserCurrency", user.PreferredCurrency);
 
-            TempData["SuccessMessage"] = "Profile details updated successfully.";
-            return View(user);
+            TempData["SuccessMessage"] = "Profile settings updated successfully!";
+            return RedirectToAction("Profile");
         }
 
+        // ==========================================
+        // 1.2 Host Identity Verification Submission
+        // ==========================================
+        [Authorize(Roles = "Host")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult SubmitHostVerification(HostVerificationSubmissionVM vm)
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var user = _db.Users.Find(userId);
+            if (user == null) return NotFound();
+
+            if (vm.IdDocument == null)
+            {
+                TempData["ErrorMessage"] = "Please select an identity document image to upload.";
+                return RedirectToAction("Profile");
+            }
+
+            var err = _helper.ValidatePhoto(vm.IdDocument);
+            if (err != null)
+            {
+                TempData["ErrorMessage"] = err;
+                return RedirectToAction("Profile");
+            }
+
+            string docFile = _helper.SavePhoto(vm.IdDocument, "documents");
+            user.IdDocumentPhoto = docFile;
+            user.IdentityStatus = "PendingApproval";
+            user.IdentityNotes = vm.Notes;
+            _db.SaveChanges();
+
+            _helper.LogAudit(_db, user.Id, user.Email, "HostVerificationSubmitted", "Host submitted ID document for admin approval.");
+            TempData["SuccessMessage"] = "Identity document submitted for Admin approval. Verification status is now Pending.";
+            return RedirectToAction("Profile");
+        }
+
+        // ==========================================
+        // 1.2 & 7.2 Admin Approval of Host Identity
+        // ==========================================
+        [Authorize(Roles = "Admin")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ApproveHostVerification(int userId, bool approve, string? notes)
+        {
+            var user = _db.Users.Find(userId);
+            if (user == null) return NotFound();
+
+            user.IdentityStatus = approve ? "Verified" : "Rejected";
+            user.IdentityNotes = notes;
+            user.IdentityApprovedAt = DateTime.Now;
+            _db.SaveChanges();
+
+            string adminEmail = User.Identity?.Name ?? "Admin";
+            int adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            _helper.LogAudit(_db, adminId, adminEmail, approve ? "HostVerified" : "HostRejected",
+                $"Admin {(approve ? "verified" : "rejected")} Host #{user.Id} ({user.FullName}). Notes: {notes}");
+
+            TempData["SuccessMessage"] = $"Host #{user.Id} identity status set to {user.IdentityStatus}.";
+            return RedirectToAction("Users");
+        }
+
+        // ==========================================
+        // 7.2 Admin User Management & Host Queue
+        // ==========================================
         [Authorize(Roles = "Admin")]
         [HttpGet]
         public IActionResult Users()
         {
-            var list = _db.Users.OrderByDescending(u => u.CreatedAt).ToList();
-            return View(list);
+            var users = _db.Users
+                .Include(u => u.HostedProperties)
+                .OrderByDescending(u => u.CreatedAt)
+                .ToList();
+
+            return View(users);
         }
 
+        // ==========================================
+        // 8.1 System Audit Trail Log Viewer
+        // ==========================================
         [Authorize(Roles = "Admin")]
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public IActionResult UnlockUser(int id)
+        [HttpGet]
+        public IActionResult AuditLogs(string? search = null, string? actionType = null)
         {
-            var user = _db.Users.Find(id);
+            var query = _db.AuditLogs.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                query = query.Where(a => a.UserEmail.Contains(search) || a.Details.Contains(search) || (a.IpAddress != null && a.IpAddress.Contains(search)));
+            }
+
+            if (!string.IsNullOrWhiteSpace(actionType) && actionType != "All")
+            {
+                query = query.Where(a => a.Action == actionType);
+            }
+
+            var logs = query.OrderByDescending(a => a.Timestamp).Take(200).ToList();
+            ViewBag.Search = search;
+            ViewBag.ActionType = actionType;
+            return View(logs);
+        }
+
+        // ==========================================
+        // Demo Role Quick-Switcher
+        // ==========================================
+        [HttpGet]
+        public async Task<IActionResult> SwitchRole(string role)
+        {
+            // Normalize
+            string targetRole = role switch
+            {
+                "Admin" => "Admin",
+                "Host" or "Owner" => "Host",
+                _ => "Guest"
+            };
+
+            var user = _db.Users.FirstOrDefault(u => u.Role == targetRole);
+            if (user == null)
+            {
+                // Fallback to first user
+                user = _db.Users.FirstOrDefault();
+            }
+
             if (user != null)
             {
-                user.FailedLoginAttempts = 0;
-                user.LockoutEnd = null;
-                _db.SaveChanges();
-                TempData["SuccessMessage"] = $"Account for {user.FullName} has been unlocked.";
+                await _helper.SignInAsync(user.Id, user.Email, user.FullName, user.Role, true);
+                TempData["SuccessMessage"] = $"DEMO MODE: Switched to {user.Role} ({user.FullName})";
             }
-            return RedirectToAction("Users");
+
+            return RedirectToAction("Catalog", "Property");
+        }
+
+        [HttpGet]
+        public IActionResult AccessDenied()
+        {
+            return View();
         }
     }
 }

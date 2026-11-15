@@ -1,111 +1,121 @@
 @model List<HomeNest.Models.Property>
+@{
+    var wishlistIds = ViewBag.WishlistPropertyIds as HashSet<int> ?? new HashSet<int>();
+}
 
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4" id="propertiesList">
-    @if (!Model.Any())
+@if (Model == null || !Model.Any())
+{
+    <div class="col-12 text-center py-5">
+        <div class="p-5 border rounded-4 bg-light">
+            <i class="bi bi-search fs-1 text-muted"></i>
+            <h4 class="mt-3 fw-bold">No properties match your search criteria</h4>
+            <p class="text-muted">Try adjusting your dates, expanding your price range, or clearing amenity filters.</p>
+            <a href="/Property/Catalog" class="btn btn-outline-dark rounded-pill px-4">Reset All Filters</a>
+        </div>
+    </div>
+}
+else
+{
+    @foreach (var p in Model)
     {
-        <div class="col-12 text-center py-5">
-            <div class="card border-0 shadow-sm p-5 text-center">
-                <i class="bi bi-search text-muted display-4 mb-3"></i>
-                <h4 class="fw-bold">No properties match your filter</h4>
-                <p class="text-muted">Try resetting your search query or adjusting the max rent slider.</p>
-                <div class="mt-2">
-                    <a asp-action="Catalog" class="btn btn-outline-primary btn-sm">Reset All Filters</a>
+        var cover = p.Photos.FirstOrDefault(ph => ph.IsCover)?.FileName 
+            ?? p.Photos.FirstOrDefault()?.FileName 
+            ?? "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80";
+
+        double avgRating = p.Reviews.Any() ? Math.Round(p.Reviews.Average(r => r.OverallRating), 2) : 5.0;
+        int reviewCount = p.Reviews.Count;
+        bool isSaved = wishlistIds.Contains(p.Id);
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card-custom h-100 position-relative">
+                
+                <!-- Wishlist Heart Button -->
+                <button type="button" 
+                        class="btn-wishlist position-absolute top-0 end-0 m-3 btn btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center"
+                        style="background: rgba(255,255,255,0.9); width:36px; height:36px; z-index:10;"
+                        data-property-id="@p.Id"
+                        title="Save to Wishlist">
+                    <i class="bi @(isSaved ? "bi-heart-fill text-danger" : "bi-heart text-dark") fs-6 heart-icon-@p.Id"></i>
+                </button>
+
+                <!-- Property Cover Image -->
+                <a asp-action="Details" asp-route-id="@p.Id" class="text-decoration-none">
+                    <div style="height: 240px; overflow: hidden; position: relative;">
+                        <img src="@cover" alt="@p.Title" class="w-100 h-100 object-fit-cover" loading="lazy" />
+                        <span class="position-absolute bottom-0 start-0 m-2 badge bg-dark bg-opacity-75 rounded-pill px-2 py-1" style="font-size:0.75rem;">
+                            @p.PropertyType
+                        </span>
+                    </div>
+                </a>
+
+                <!-- Card Content -->
+                <div class="p-3">
+                    <div class="d-flex justify-content-between align-items-baseline mb-1">
+                        <span class="fw-bold text-dark text-truncate" style="max-width: 70%; font-size:0.95rem;">
+                            @p.City, @p.State
+                        </span>
+                        <span class="d-flex align-items-center gap-1 text-dark fw-semibold" style="font-size:0.88rem;">
+                            <i class="bi bi-star-fill text-warning" style="font-size:0.8rem;"></i>
+                            @(reviewCount > 0 ? avgRating.ToString("0.0") : "New")
+                            @if (reviewCount > 0)
+                            {
+                                <span class="text-muted" style="font-size:0.78rem;">(@reviewCount)</span>
+                            }
+                        </span>
+                    </div>
+
+                    <a asp-action="Details" asp-route-id="@p.Id" class="text-decoration-none text-secondary">
+                        <p class="mb-2 text-truncate fw-normal text-muted" style="font-size:0.88rem;" title="@p.Title">
+                            @p.Title
+                        </p>
+                    </a>
+
+                    <div class="d-flex align-items-center gap-2 text-muted mb-2" style="font-size:0.8rem;">
+                        <span><i class="bi bi-people"></i> Up to @p.MaxGuests guests</span>
+                        <span>•</span>
+                        <span><i class="bi bi-door-closed"></i> @p.Bedrooms bed</span>
+                        <span>•</span>
+                        <span><i class="bi bi-droplet"></i> @p.Bathrooms bath</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-baseline pt-2 border-top">
+                        <div>
+                            <span class="fw-bolder fs-5 text-dark" data-base-price="@p.BaseNightlyRate">RM @p.BaseNightlyRate.ToString("N0")</span>
+                            <span class="text-muted" style="font-size:0.85rem;"> / night</span>
+                        </div>
+                        <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-outline-dark rounded-pill px-3">
+                            View Deal
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     }
-    else
+
+    <!-- Pagination -->
+    @if (ViewBag.TotalPages > 1)
     {
-        @foreach (var item in Model)
-        {
-            var photoObj = item.Photos.FirstOrDefault(p => p.IsCover) ?? item.Photos.FirstOrDefault();
-            string imgUrl = photoObj?.FileName ?? "";
-            if (string.IsNullOrEmpty(imgUrl))
-            {
-                imgUrl = "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800";
-            }
-            else if (!imgUrl.StartsWith("http") && !imgUrl.StartsWith("/"))
-            {
-                imgUrl = "/uploads/properties/" + imgUrl;
-            }
-
-            var minRent = item.RoomUnits.Any() ? item.RoomUnits.Min(r => r.MonthlyRent) : 0m;
-            var availableRooms = item.RoomUnits.Count(r => r.IsAvailable);
-            var amenities = (item.AmenitiesCsv ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            <div class="col property-item" 
-                 data-city="@item.City" 
-                 data-lat="@item.Latitude" 
-                 data-lng="@item.Longitude" 
-                 data-id="@item.Id">
-                <div class="card h-100 property-card-modern shadow-sm border-0">
-                    <!-- Photo with Badges -->
-                    <div class="position-relative bg-light" style="height: 185px; overflow: hidden;">
-                        <img src="@imgUrl" class="card-img-top w-100 h-100" style="object-fit: cover; transition: transform 0.3s ease;" alt="@item.Title" onerror="this.src='https://placehold.co/600x400/e2e8f0/334155?text=HomeNest';" />
-                        
-                        <div class="position-absolute top-0 start-0 m-2">
-                            <span class="badge bg-dark bg-opacity-75 text-white fw-semibold px-2 py-1" style="font-size: 10px; backdrop-filter: blur(4px);">
-                                <i class="bi bi-patch-check-fill text-info me-1"></i> Verified Landlord
-                            </span>
-                        </div>
-
-                        <div class="position-absolute top-0 end-0 m-2">
-                            <span class="badge bg-white text-dark shadow-sm fw-bold px-2 py-1" style="font-size: 10px;">
-                                @item.PropertyType
-                            </span>
-                        </div>
-
-                        <div class="position-absolute bottom-0 end-0 m-2">
-                            <span class="badge @(availableRooms > 0 ? "bg-success" : "bg-danger") shadow-sm" style="font-size: 10px;">
-                                @(availableRooms > 0 ? $"{availableRooms} Room(s) Left" : "Fully Occupied")
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Card Body -->
-                    <div class="card-body d-flex flex-column p-3">
-                        <h6 class="card-title fw-bold text-truncate mb-1" title="@item.Title" style="font-size: 0.95rem;">
-                            @item.Title
-                        </h6>
-                        
-                        <p class="card-text text-muted small mb-2 text-truncate">
-                            <i class="bi bi-geo-alt-fill text-danger me-1"></i> @item.City, @item.State
-                        </p>
-
-                        <!-- Amenities Pills -->
-                        <div class="d-flex flex-wrap gap-1 mb-3">
-                            @if (amenities.Contains("WiFi"))
-                            {
-                                <span class="badge bg-light text-secondary border" style="font-size: 9.5px;">📶 WiFi</span>
-                            }
-                            @if (amenities.Contains("AirCond"))
-                            {
-                                <span class="badge bg-light text-secondary border" style="font-size: 9.5px;">❄️ Air-Cond</span>
-                            }
-                            @if (amenities.Contains("NearLRT"))
-                            {
-                                <span class="badge bg-light text-secondary border" style="font-size: 9.5px;">🚇 Near LRT</span>
-                            }
-                            @if (amenities.Contains("CookingAllowed"))
-                            {
-                                <span class="badge bg-light text-secondary border" style="font-size: 9.5px;">🍳 Cooking</span>
-                            }
-                        </div>
-
-                        <!-- Price & CTA -->
-                        <div class="mt-auto pt-2 border-top d-flex justify-content-between align-items-center">
-                            <div>
-                                <small class="text-muted d-block" style="font-size: 10.5px;">From</small>
-                                <span class="fw-bold fs-6" style="color: #0d9488;">RM @minRent.ToString("N0")</span>
-                                <small class="text-muted" style="font-size: 11px;">/mo</small>
-                            </div>
-                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary fw-semibold px-3 py-1" style="border-radius: 8px; font-size: 12px;">
-                                View Rooms <i class="bi bi-chevron-right ms-1"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        }
+        <div class="col-12 mt-4">
+            <nav class="d-flex justify-content-center">
+                <ul class="pagination pagination-rounded shadow-sm">
+                    <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link ajax-page-link" href="#" data-page="@(ViewBag.CurrentPage - 1)">
+                            <i class="bi bi-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                            <a class="page-link ajax-page-link" href="#" data-page="@i">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                        <a class="page-link ajax-page-link" href="#" data-page="@(ViewBag.CurrentPage + 1)">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
     }
-</div>
+}

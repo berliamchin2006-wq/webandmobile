@@ -1,0 +1,111 @@
+@model List<HomeNest.Models.AuditLog>
+@{
+    ViewData["Title"] = "Security & Financial Audit Trail";
+    string currentAction = ViewBag.ActionType as string ?? "All";
+}
+
+<div class="container py-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-danger rounded-pill px-3 py-1 mb-1">Module 8.1: Security & Audit Infrastructure</span>
+            <h2 class="fw-bold mb-0">System Audit Trail Logs</h2>
+        </div>
+        <a asp-controller="Booking" asp-action="AdminDashboard" class="btn btn-outline-dark rounded-pill px-3">
+            <i class="bi bi-speedometer2"></i> Admin Dashboard
+        </a>
+    </div>
+
+    <!-- FILTER & SEARCH BAR -->
+    <div class="card border rounded-4 p-3 shadow-sm mb-4 bg-white">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" class="form-control" placeholder="Search by email, details, or IP..." value="@ViewBag.Search" />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <select name="actionType" class="form-select">
+                    <option value="All" selected="@(currentAction == "All")">All Actions</option>
+                    <option value="LoginSuccess" selected="@(currentAction == "LoginSuccess")">Login Success</option>
+                    <option value="FailedLogin" selected="@(currentAction == "FailedLogin")">Failed Login</option>
+                    <option value="AccountLocked" selected="@(currentAction == "AccountLocked")">3-Strike Account Lockout</option>
+                    <option value="BookingCreated" selected="@(currentAction == "BookingCreated")">Booking Created</option>
+                    <option value="BookingCancelled" selected="@(currentAction == "BookingCancelled")">Booking Cancelled / Refund</option>
+                    <option value="HostPayoutDisbursed" selected="@(currentAction == "HostPayoutDisbursed")">Host Payout Disbursed</option>
+                    <option value="HostVerified" selected="@(currentAction == "HostVerified")">Host ID Verification</option>
+                    <option value="ListingCreated" selected="@(currentAction == "ListingCreated")">Listing Created / Updated</option>
+                </select>
+            </div>
+            <div class="col-md-3 text-md-end">
+                <button type="submit" class="btn btn-dark rounded-pill px-4">
+                    Filter Logs
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- AUDIT LOGS TABLE -->
+    <div class="card border rounded-4 shadow-sm overflow-hidden bg-white">
+        <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0">Immutable Audit Event Records (@Model.Count)</h5>
+            <span class="text-muted small">Retained in database for audit compliance</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:0.88rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:160px;">Timestamp</th>
+                        <th style="width:140px;">Action</th>
+                        <th style="width:180px;">User Email</th>
+                        <th>Event Description & Details</th>
+                        <th style="width:120px;">IP Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr><td colspan="5" class="text-center text-muted py-4">No audit logs matching query.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var log in Model)
+                        {
+                            string badgeClass = log.Action switch
+                            {
+                                "LoginSuccess" => "bg-success-subtle text-success",
+                                "FailedLogin" or "AccountLocked" => "bg-danger-subtle text-danger",
+                                "BookingCreated" => "bg-primary-subtle text-primary",
+                                "BookingCancelled" => "bg-warning-subtle text-warning",
+                                "HostPayoutDisbursed" => "bg-success text-white",
+                                _ => "bg-light text-dark border"
+                            };
+
+                            <tr>
+                                <td class="text-muted small">
+                                    @log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
+                                </td>
+                                <td>
+                                    <span class="badge @badgeClass rounded-pill">@log.Action</span>
+                                </td>
+                                <td>
+                                    <strong>@log.UserEmail</strong>
+                                </td>
+                                <td class="text-secondary">
+                                    @log.Details
+                                </td>
+                                <td class="small text-muted font-monospace">
+                                    @(log.IpAddress ?? "127.0.0.1")
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+

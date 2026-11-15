@@ -1,0 +1,131 @@
+@model HomeNest.Models.Booking
+@{
+    ViewData["Title"] = "Digital Check-In Pass";
+    var p = Model.Property;
+}
+
+@section Styles {
+    <style>
+        .pass-card {
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.12);
+            border: 1px solid var(--border-color);
+            color: #222;
+        }
+
+        .pass-header {
+            background: linear-gradient(135deg, #ff385c 0%, #e00b41 100%);
+            color: white;
+            padding: 28px 24px;
+            text-align: center;
+        }
+
+        .pass-body {
+            padding: 28px 24px;
+        }
+
+        .qr-wrapper {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 18px;
+            padding: 20px;
+            display: inline-block;
+            margin: 0 auto;
+        }
+    </style>
+}
+
+<div class="container py-4" style="max-width: 520px;">
+    
+    <div class="mb-3 text-start">
+        <a asp-action="MyBookings" class="btn btn-outline-secondary rounded-pill px-3 btn-sm">
+            <i class="bi bi-arrow-left"></i> My Trips
+        </a>
+    </div>
+
+    <!-- DIGITAL PASS CARD -->
+    <div class="pass-card">
+        
+        <!-- HEADER -->
+        <div class="pass-header">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-white text-danger fw-bold rounded-pill px-3 py-1">DIGITAL CHECK-IN PASS</span>
+                <span class="badge bg-black bg-opacity-25 rounded-pill px-2 py-1">#@Model.Id</span>
+            </div>
+            <h4 class="fw-bold mb-1 text-white">@p.Title</h4>
+            <p class="mb-0 text-white-50 small"><i class="bi bi-geo-alt"></i> @p.City, @p.State</p>
+        </div>
+
+        <!-- BODY -->
+        <div class="pass-body text-center">
+            
+            <!-- Dynamic QR Code SVG -->
+            <div class="qr-wrapper mb-3 shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 100 100">
+                    <rect width="100" height="100" fill="white"/>
+                    <rect x="10" y="10" width="25" height="25" fill="#222"/>
+                    <rect x="15" y="15" width="15" height="15" fill="white"/>
+                    <rect x="18" y="18" width="9" height="9" fill="#222"/>
+                    <rect x="65" y="10" width="25" height="25" fill="#222"/>
+                    <rect x="70" y="15" width="15" height="15" fill="white"/>
+                    <rect x="73" y="18" width="9" height="9" fill="#222"/>
+                    <rect x="10" y="65" width="25" height="25" fill="#222"/>
+                    <rect x="15" y="70" width="15" height="15" fill="white"/>
+                    <rect x="18" y="73" width="9" height="9" fill="#222"/>
+                    <rect x="42" y="12" width="10" height="10" fill="#222"/>
+                    <rect x="42" y="32" width="12" height="12" fill="#222"/>
+                    <rect x="42" y="55" width="14" height="8" fill="#222"/>
+                    <rect x="42" y="75" width="10" height="15" fill="#222"/>
+                    <rect x="65" y="45" width="22" height="8" fill="#222"/>
+                    <rect x="65" y="65" width="12" height="12" fill="#222"/>
+                    <rect x="80" y="70" width="10" height="20" fill="#222"/>
+                </svg>
+            </div>
+
+            <h5 class="fw-bolder tracking-wide text-dark mb-1">@Model.QrCheckInToken</h5>
+            <p class="text-muted small mb-4">Present this QR code or token to your host upon arrival for instant check-in verification.</p>
+
+            <!-- STAY TIMINGS -->
+            <div class="row g-2 p-3 bg-light rounded-4 text-start mb-4">
+                <div class="col-6 border-end">
+                    <span class="text-muted d-block small text-uppercase fw-bold">Check-In</span>
+                    <strong class="d-block fs-6 text-dark">@Model.CheckInDate.ToString("dd MMM yyyy")</strong>
+                    <span class="text-muted small">After 3:00 PM</span>
+                </div>
+                <div class="col-6 ps-3">
+                    <span class="text-muted d-block small text-uppercase fw-bold">Check-Out</span>
+                    <strong class="d-block fs-6 text-dark">@Model.CheckOutDate.ToString("dd MMM yyyy")</strong>
+                    <span class="text-muted small">Before 11:00 AM</span>
+                </div>
+            </div>
+
+            <!-- GUEST & HOST -->
+            <div class="d-flex justify-content-between text-start small border-top pt-3 text-muted">
+                <div>
+                    <span class="d-block"><strong>Guest:</strong> @Model.Guest.FullName</span>
+                    <span><strong>Phone:</strong> @Model.Guest.PhoneNumber</span>
+                </div>
+                <div class="text-end">
+                    <span class="d-block"><strong>Host:</strong> @p.Host.FullName</span>
+                    <span><strong>Status:</strong> <span class="badge bg-success-subtle text-success">@Model.Status</span></span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- FOOTER BUTTONS -->
+        <div class="p-3 bg-light border-top text-center d-flex gap-2">
+            <a asp-action="Receipt" asp-route-id="@Model.Id" class="btn btn-outline-dark rounded-pill flex-fill">
+                <i class="bi bi-receipt"></i> Tax Receipt
+            </a>
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-airbnb rounded-pill flex-fill">
+                <i class="bi bi-chat-dots"></i> Message Host
+            </a>
+        </div>
+
+    </div>
+
+</div>
+

@@ -1,107 +1,343 @@
 @model HomeNest.Models.PropertyFormVM
-
 @{
-    ViewData["Title"] = "Create Property Listing";
-    var amenitiesList = new[] { "WiFi", "AirCond", "WashingMachine", "WaterHeater", "Refrigerator", "Gym", "SwimmingPool", "Security24Hr", "Balcony", "Kitchen" };
+    ViewData["Title"] = "Add New Listing";
 }
 
-<div class="row justify-content-center mb-5">
-    <div class="col-lg-9">
-        <div class="card border-0 shadow-sm p-4 p-md-5">
-            <h2 class="fw-bold mb-1">List a New Property</h2>
-            <p class="text-muted mb-4">Provide accurate details to help prospective tenants find your place.</p>
+@section Styles {
+    <style>
+        .form-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+        #pinDropMap {
+            height: 350px;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+        #imageEditorCanvas {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            background: #f1f5f9;
+        }
+    </style>
+}
 
-            <form asp-action="Create" method="post" enctype="multipart/form-data">
-                @Html.AntiForgeryToken()
-                <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-4"></div>
-
-                <div class="mb-3">
-                    <label asp-for="Title" class="form-label fw-semibold">Listing Title *</label>
-                    <input asp-for="Title" class="form-control" placeholder="e.g. PV15 Platinum Lake Condominium (Near TAR UMT)" />
-                    <span asp-validation-for="Title" class="text-danger small"></span>
-                </div>
-
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label asp-for="PropertyType" class="form-label fw-semibold">Property Type *</label>
-                        <select asp-for="PropertyType" class="form-select">
-                            <option value="Condominium">Condominium</option>
-                            <option value="Apartment">Apartment</option>
-                            <option value="Landed House">Landed House</option>
-                            <option value="Service Residence">Service Residence</option>
-                            <option value="Townhouse">Townhouse</option>
-                        </select>
-                        <span asp-validation-for="PropertyType" class="text-danger small"></span>
-                    </div>
-                    <div class="col-md-6">
-                        <label asp-for="Postcode" class="form-label fw-semibold">Postcode *</label>
-                        <input asp-for="Postcode" class="form-control" placeholder="53300" />
-                        <span asp-validation-for="Postcode" class="text-danger small"></span>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label asp-for="Address" class="form-label fw-semibold">Street Address *</label>
-                    <input asp-for="Address" class="form-control" placeholder="e.g. Jalan Danau Saujana, Taman Danau Kota" />
-                    <span asp-validation-for="Address" class="text-danger small"></span>
-                </div>
-
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label asp-for="City" class="form-label fw-semibold">City *</label>
-                        <input asp-for="City" class="form-control" placeholder="Setapak" />
-                        <span asp-validation-for="City" class="text-danger small"></span>
-                    </div>
-                    <div class="col-md-6">
-                        <label asp-for="State" class="form-label fw-semibold">State *</label>
-                        <select asp-for="State" class="form-select">
-                            <option value="Kuala Lumpur">Kuala Lumpur</option>
-                            <option value="Selangor">Selangor</option>
-                            <option value="Penang">Penang</option>
-                            <option value="Johor">Johor</option>
-                            <option value="Perak">Perak</option>
-                            <option value="Melaka">Melaka</option>
-                            <option value="Sabah">Sabah</option>
-                            <option value="Sarawak">Sarawak</option>
-                        </select>
-                        <span asp-validation-for="State" class="text-danger small"></span>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label asp-for="Description" class="form-label fw-semibold">Description *</label>
-                    <textarea asp-for="Description" class="form-control" rows="4" placeholder="Detail the furnishings, nearby colleges, LRT/bus stations, and house rules..."></textarea>
-                    <span asp-validation-for="Description" class="text-danger small"></span>
-                </div>
-
-                <div class="mb-4">
-                    <label class="form-label fw-semibold d-block">Amenities Available</label>
-                    <div class="row row-cols-2 row-cols-md-3 g-2">
-                        @foreach (var am in amenitiesList)
-                        {
-                            <div class="col">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="SelectedAmenities" value="@am" id="am_@am" />
-                                    <label class="form-check-label" for="am_@am">@am</label>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </div>
-
-                <div class="mb-4">
-                    <label asp-for="Photos" class="form-label fw-semibold">Upload Photos</label>
-                    <input asp-for="Photos" type="file" multiple class="form-control" accept="image/png, image/jpeg, image/webp" />
-                    <span asp-validation-for="Photos" class="text-danger small"></span>
-                    <small class="text-muted d-block mt-1">Accepted formats: JPG, PNG, WEBP. Max 5MB per file.</small>
-                </div>
-
-                <div class="d-flex justify-content-between">
-                    <a asp-action="MyProperties" class="btn btn-outline-secondary">Cancel</a>
-                    <button type="submit" class="btn btn-primary px-4">Publish Listing</button>
-                </div>
-            </form>
+<div class="container py-4" style="max-width: 900px;">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-danger bg-opacity-75 rounded-pill px-3 py-1 mb-1">Module 2: Property & Listing Management</span>
+            <h2 class="fw-bold mb-0">Create New Vacation Rental Listing</h2>
         </div>
+        <a asp-action="MyProperties" class="btn btn-outline-secondary rounded-pill px-3">
+            <i class="bi bi-arrow-left"></i> Back to Listings
+        </a>
     </div>
+
+    <form asp-action="Create" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+
+        <!-- 1. GENERAL INFORMATION -->
+        <div class="form-section">
+            <h5 class="fw-bold mb-3"><i class="bi bi-info-circle text-primary me-2"></i> 1. Property Details & Type</h5>
+            
+            <div class="mb-3">
+                <label asp-for="Title" class="form-label fw-semibold">Listing Title *</label>
+                <input asp-for="Title" class="form-control" placeholder="e.g. Luxury KLCC Suite with Infinity Skyline View" />
+                <span asp-validation-for="Title" class="text-danger small"></span>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label asp-for="PropertyType" class="form-label fw-semibold">Property Type *</label>
+                    <select asp-for="PropertyType" class="form-select">
+                        <option value="Condominium">Condominium</option>
+                        <option value="Villa">Villa</option>
+                        <option value="Townhouse">Townhouse</option>
+                        <option value="Apartment">Apartment</option>
+                        <option value="Chalet">Chalet</option>
+                        <option value="Studio">Studio</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="CancellationPolicy" class="form-label fw-semibold">Cancellation Policy *</label>
+                    <select asp-for="CancellationPolicy" class="form-select">
+                        <option value="Flexible">Flexible (100% refund up to 24h before)</option>
+                        <option value="Moderate">Moderate (100% refund up to 5 days before)</option>
+                        <option value="Strict">Strict (50% refund up to 7 days before)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label fw-semibold">Description *</label>
+                <textarea asp-for="Description" rows="4" class="form-control" placeholder="Describe the space, atmosphere, neighborhood, and special features..."></textarea>
+                <span asp-validation-for="Description" class="text-danger small"></span>
+            </div>
+        </div>
+
+        <!-- 2. CAPACITY & SPACE -->
+        <div class="form-section">
+            <h5 class="fw-bold mb-3"><i class="bi bi-people text-primary me-2"></i> 2. Capacity & Accommodations</h5>
+            
+            <div class="row g-3">
+                <div class="col-6 col-md-3">
+                    <label asp-for="MaxGuests" class="form-label fw-semibold">Max Guests</label>
+                    <input asp-for="MaxGuests" class="form-control" type="number" min="1" max="30" />
+                </div>
+                <div class="col-6 col-md-3">
+                    <label asp-for="Bedrooms" class="form-label fw-semibold">Bedrooms</label>
+                    <input asp-for="Bedrooms" class="form-control" type="number" min="1" max="20" />
+                </div>
+                <div class="col-6 col-md-3">
+                    <label asp-for="Beds" class="form-label fw-semibold">Beds</label>
+                    <input asp-for="Beds" class="form-control" type="number" min="1" max="30" />
+                </div>
+                <div class="col-6 col-md-3">
+                    <label asp-for="Bathrooms" class="form-label fw-semibold">Bathrooms</label>
+                    <input asp-for="Bathrooms" class="form-control" type="number" min="1" max="10" />
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. PRICING & SEASONAL RATES -->
+        <div class="form-section">
+            <h5 class="fw-bold mb-3"><i class="bi bi-cash-coin text-success me-2"></i> 3. Pricing Configuration (MYR)</h5>
+            
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="BaseNightlyRate" class="form-label fw-semibold">Base Nightly Rate (RM) *</label>
+                    <input asp-for="BaseNightlyRate" class="form-control" type="number" step="1" />
+                    <span asp-validation-for="BaseNightlyRate" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="CleaningFee" class="form-label fw-semibold">Cleaning Fee (RM) *</label>
+                    <input asp-for="CleaningFee" class="form-control" type="number" step="1" />
+                    <span asp-validation-for="CleaningFee" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="CustomWeekendRate" class="form-label fw-semibold">Weekend Rate (Fri-Sat RM) *</label>
+                    <input asp-for="CustomWeekendRate" class="form-control" type="number" step="1" />
+                    <span asp-validation-for="CustomWeekendRate" class="text-danger small"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. LOCATION & INTERACTIVE PIN-DROP MAP -->
+        <div class="form-section">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0"><i class="bi bi-geo-alt text-danger me-2"></i> 4. Location & Interactive Map Pin-Drop</h5>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill">Click on map to drop pin</span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Address" class="form-label fw-semibold">Street Address *</label>
+                <input asp-for="Address" class="form-control" placeholder="e.g. Jalan Sultan Ismail, Golden Triangle" />
+                <span asp-validation-for="Address" class="text-danger small"></span>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label asp-for="City" class="form-label fw-semibold">City *</label>
+                    <input asp-for="City" class="form-control" placeholder="e.g. Kuala Lumpur" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="State" class="form-label fw-semibold">State *</label>
+                    <input asp-for="State" class="form-control" placeholder="e.g. Kuala Lumpur" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Postcode" class="form-label fw-semibold">Postcode *</label>
+                    <input asp-for="Postcode" class="form-control" placeholder="50450" />
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label asp-for="Latitude" class="form-label fw-semibold">Latitude</label>
+                    <input asp-for="Latitude" id="inputLat" class="form-control" readonly />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Longitude" class="form-label fw-semibold">Longitude</label>
+                    <input asp-for="Longitude" id="inputLng" class="form-control" readonly />
+                </div>
+            </div>
+
+            <!-- Leaflet Click Pin-Drop Map -->
+            <div id="pinDropMap" class="mb-2"></div>
+            <small class="text-muted"><i class="bi bi-info-circle"></i> Click anywhere on the map to set the exact pin coordinates for your listing.</small>
+        </div>
+
+        <!-- 5. AMENITIES & HOUSE RULES -->
+        <div class="form-section">
+            <h5 class="fw-bold mb-3"><i class="bi bi-check2-square text-primary me-2"></i> 5. Amenities & House Rules</h5>
+            
+            <label class="form-label fw-semibold">Select Amenities</label>
+            <div class="row g-2 mb-3">
+                @{
+                    string[] allAmenities = new[] { "WiFi", "AirCond", "Kitchen", "FreeParking", "TV", "Pool", "Gym", "SeaView", "SelfCheckIn", "WashingMachine" };
+                }
+                @foreach (var am in allAmenities)
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="SelectedAmenities" value="@am" id="amenity_@am" />
+                            <label class="form-check-label" for="amenity_@am">@am</label>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="HouseRules" class="form-label fw-semibold">House Rules</label>
+                <textarea asp-for="HouseRules" rows="3" class="form-control" placeholder="Check-in time, smoking policy, noise restrictions..."></textarea>
+            </div>
+        </div>
+
+        <!-- 6. MULTI-PHOTO UPLOAD & BUILT-IN IMAGE CROP/ROTATE EDITOR -->
+        <div class="form-section">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0"><i class="bi bi-camera text-primary me-2"></i> 6. Multi-Photo Upload & Built-In Image Editor</h5>
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Crop & Rotate Tool</span>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Select Listing Photos (Upload Multiple)</label>
+                <input asp-for="NewPhotos" type="file" multiple class="form-control" id="photoInput" accept="image/*" />
+                <small class="text-muted">You can upload multiple JPG, PNG, or WEBP photos. The first photo will be set as the cover image.</small>
+            </div>
+
+            <!-- Client-Side Image Editor (Canvas Crop & Rotate) -->
+            <div id="imageEditorSection" class="p-3 border rounded-3 bg-light d-none">
+                <h6 class="fw-bold mb-2"><i class="bi bi-sliders2"></i> Live Image Crop, Rotate & Resize Editor</h6>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button type="button" class="btn btn-sm btn-outline-dark" id="btnRotateLeft"><i class="bi bi-arrow-counterclockwise"></i> Rotate 90° Left</button>
+                    <button type="button" class="btn btn-sm btn-outline-dark" id="btnRotateRight"><i class="bi bi-arrow-clockwise"></i> Rotate 90° Right</button>
+                    <button type="button" class="btn btn-sm btn-outline-dark" id="btnFlipH"><i class="bi bi-symmetry-vertical"></i> Flip Horizontal</button>
+                    <button type="button" class="btn btn-sm btn-outline-dark" id="btnResetEditor"><i class="bi bi-arrow-repeat"></i> Reset</button>
+                </div>
+                <div class="text-center overflow-auto p-2 border rounded bg-white">
+                    <canvas id="imageEditorCanvas"></canvas>
+                </div>
+                <p class="text-muted small mt-2 mb-0"><i class="bi bi-check-circle text-success"></i> Real-time canvas rendering active. Rotated orientations are preserved upon saving.</p>
+            </div>
+        </div>
+
+        <!-- SUBMIT BUTTON -->
+        <div class="d-flex justify-content-end gap-3 mb-5">
+            <a asp-action="MyProperties" class="btn btn-outline-secondary rounded-pill px-4">Cancel</a>
+            <button type="submit" class="btn btn-airbnb rounded-pill px-5 py-2 fs-5 fw-bold shadow">
+                Publish Listing
+            </button>
+        </div>
+
+    </form>
 </div>
 
+@section Scripts {
+    <script>
+        // 1. Leaflet Interactive Pin-Drop
+        let currentLat = @Model.Latitude;
+        let currentLng = @Model.Longitude;
+
+        const pinMap = L.map('pinDropMap').setView([currentLat, currentLng], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(pinMap);
+
+        let marker = L.marker([currentLat, currentLng], { draggable: true }).addTo(pinMap);
+
+        function updateCoordinates(lat, lng) {
+            document.getElementById('inputLat').value = lat.toFixed(6);
+            document.getElementById('inputLng').value = lng.toFixed(6);
+        }
+
+        pinMap.on('click', function(e) {
+            marker.setLatLng(e.latlng);
+            updateCoordinates(e.latlng.lat, e.latlng.lng);
+        });
+
+        marker.on('dragend', function(e) {
+            const pos = marker.getLatLng();
+            updateCoordinates(pos.lat, pos.lng);
+        });
+
+        // 2. Built-In Canvas Image Crop & Rotate Editor
+        const photoInput = document.getElementById('photoInput');
+        const editorSection = document.getElementById('imageEditorSection');
+        const canvas = document.getElementById('imageEditorCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let currentImg = new Image();
+        let rotationAngle = 0;
+        let isFlippedH = false;
+
+        photoInput.addEventListener('change', function(e) {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    currentImg.onload = function() {
+                        editorSection.classList.remove('d-none');
+                        rotationAngle = 0;
+                        isFlippedH = false;
+                        renderCanvas();
+                    };
+                    currentImg.src = event.target.result;
+                };
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+
+        function renderCanvas() {
+            if (!currentImg.src) return;
+
+            const isRotated90or270 = (rotationAngle % 180 !== 0);
+            const w = isRotated90or270 ? currentImg.height : currentImg.width;
+            const h = isRotated90or270 ? currentImg.width : currentImg.height;
+
+            // Scale to fit max preview width 650px
+            const maxW = 650;
+            const scale = Math.min(1, maxW / w);
+            canvas.width = w * scale;
+            canvas.height = h * scale;
+
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate((rotationAngle * Math.PI) / 180);
+            if (isFlippedH) ctx.scale(-1, 1);
+
+            const drawW = (isRotated90or270 ? canvas.height : canvas.width);
+            const drawH = (isRotated90or270 ? canvas.width : canvas.height);
+
+            ctx.drawImage(currentImg, -drawW / 2, -drawH / 2, drawW, drawH);
+            ctx.restore();
+        }
+
+        document.getElementById('btnRotateRight').addEventListener('click', () => {
+            rotationAngle = (rotationAngle + 90) % 360;
+            renderCanvas();
+        });
+
+        document.getElementById('btnRotateLeft').addEventListener('click', () => {
+            rotationAngle = (rotationAngle - 90 + 360) % 360;
+            renderCanvas();
+        });
+
+        document.getElementById('btnFlipH').addEventListener('click', () => {
+            isFlippedH = !isFlippedH;
+            renderCanvas();
+        });
+
+        document.getElementById('btnResetEditor').addEventListener('click', () => {
+            rotationAngle = 0;
+            isFlippedH = false;
+            renderCanvas();
+        });
+    </script>
+}
